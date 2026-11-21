@@ -219,6 +219,7 @@ function sanitize(html){
       parts.forEach(p=>{const e=document.createElement(p);wrap.appendChild(e);wrap=e});walk(n,wrap);return}
     if(!t){walk(n,dst);return}
     const e=document.createElement(t);
+    {const al=((/text-align\s*:\s*(center|right|justify)/.exec(st)||[])[1]||(n.getAttribute("align")||"").toLowerCase());if(/^(center|right|justify)$/.test(al)&&/^(p|li|td|th)$/.test(t))e.setAttribute("style","text-align:"+al)}
     if(t==="td"||t==="th"){["colspan","rowspan"].forEach(a=>{const v=n.getAttribute(a);if(/^\d{1,2}$/.test(v||""))e.setAttribute(a,v)})}
     if(t==="a"){const h=n.getAttribute("href")||"";if(/^(https?:|mailto:)/i.test(h)){e.setAttribute("href",h)}else{walk(n,dst);return}}
     dst.appendChild(e);if(t!=="br")walk(n,e)})})(doc.body,out);
@@ -230,12 +231,14 @@ function htmlToText(h){const d=document.createElement("div");d.innerHTML=String(
 /* ---------- storage ---------- */
 const LS="programhub-v2";const FB_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey);let auth=null,fs=null,user=null,unsub=null;let doc=null,writing=Promise.resolve(),saveT=null;
 function normalize(d){d=d&&typeof d==="object"?d:{};d.programs=Array.isArray(d.programs)?d.programs:[];d.admin=Array.isArray(d.admin)?d.admin:[];d.faqs=Array.isArray(d.faqs)?d.faqs:[];d.dateStyle=d.dateStyle||"long";d.settings=d.settings||{};d.notes=Array.isArray(d.notes)?d.notes:[];
-  const ord=Array.isArray(d.settings.tabs)?d.settings.tabs.filter(v=>VIEWS.includes(v)):[];VIEWS.forEach(v=>{if(ord.includes(v))return;const b=ord.indexOf("backup");if(v!=="backup"&&b>-1)ord.splice(b,0,v);else ord.push(v)});d.settings.tabs=ord;
+  d.settings.groups=Array.isArray(d.settings.groups)?d.settings.groups.filter(g=>/^pg-[a-z0-9]+$/.test(g)):[];
+  d.programs.forEach(p=>{if(!(p.group==="programs"||d.settings.groups.includes(p.group)))p.group="programs"});
+  const VIEWS=allViews(d);const ord=Array.isArray(d.settings.tabs)?d.settings.tabs.filter(v=>VIEWS.includes(v)):[];VIEWS.forEach(v=>{if(ord.includes(v))return;const b=ord.indexOf("backup");if(v!=="backup"&&b>-1)ord.splice(b,0,v);else ord.push(v)});d.settings.tabs=ord;
   d.settings.secNames=d.settings.secNames&&typeof d.settings.secNames==="object"?d.settings.secNames:{};
   d.settings.tabNames=d.settings.tabNames&&typeof d.settings.tabNames==="object"?d.settings.tabNames:{};
   {const PO=["intakes","files","drafts"];const po=Array.isArray(d.settings.progOrder)?d.settings.progOrder.filter(x=>PO.includes(x)):[];PO.forEach(x=>{if(!po.includes(x))po.push(x)});d.settings.progOrder=po}
   d.settings.hidden=Array.isArray(d.settings.hidden)?d.settings.hidden.filter(v=>v!=="backup"):[];
-  d.settings.ov=Object.assign({range:60,prog:"",label:"",limit:25,notes:true},d.settings.ov||{});
+  d.settings.ov=Object.assign({range:60,prog:"",label:"",limit:25,notes:true,group:""},d.settings.ov||{});if(d.settings.ov.group&&!d.settings.groups.includes(d.settings.ov.group)&&d.settings.ov.group!=="programs")d.settings.ov.group="";
   const fix=x=>{if(x.html==null)x.html=textToHtml(x.body||"")};
   d.admin.forEach(fix);d.faqs.forEach(f=>{if(f.html==null)f.html=textToHtml(f.answer||"")});
   d.programs.forEach(p=>{p.links=p.links||[];p.drafts=p.drafts||[];p.drafts.forEach(fix);p.intakes=p.intakes||[];p.intakes.forEach(i=>i.dates=i.dates||[])});
@@ -369,9 +372,13 @@ async function copyText(text,what){
 }
 function selCopy(el){try{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);const ok=document.execCommand("copy");s.removeAllRanges();return ok}catch(e){return false}}
 async function copyRich(html,what){
-  const full='<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'+html.replace(/<p>/g,'<p style="margin:0 0 10px">')
-    .replace(/<table>/g,'<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;border:1px solid #999;margin:0 0 10px">')
-    .replace(/<td(\s|>)/g,'<td style="border:1px solid #999;padding:4px 8px;vertical-align:top"$1').replace(/<th(\s|>)/g,'<th style="border:1px solid #999;padding:4px 8px;vertical-align:top;background:#f2f2f2;text-align:left"$1')+"</div>";
+  const box0=document.createElement("div");box0.innerHTML=html;
+  const add=(el,css)=>{const cur=el.getAttribute("style")||"";el.setAttribute("style",css+(cur?";"+cur:""))};
+  box0.querySelectorAll("p").forEach(el=>add(el,"margin:0 0 10px"));
+  box0.querySelectorAll("table").forEach(el=>{el.setAttribute("border","1");el.setAttribute("cellspacing","0");el.setAttribute("cellpadding","6");add(el,"border-collapse:collapse;border:1px solid #999;margin:0 0 10px")});
+  box0.querySelectorAll("td").forEach(el=>add(el,"border:1px solid #999;padding:4px 8px;vertical-align:top"));
+  box0.querySelectorAll("th").forEach(el=>add(el,"border:1px solid #999;padding:4px 8px;vertical-align:top;background:#f2f2f2;text-align:left"));
+  const full='<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'+box0.innerHTML+"</div>";
   try{if(window.ClipboardItem&&navigator.clipboard.write){await navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([full],{type:"text/html"}),"text/plain":new Blob([htmlToText(html)],{type:"text/plain"})})]);toast(what+" copied with formatting");return}}catch(e){}
   const box=$("clipbox");box.innerHTML=full;if(selCopy(box)){toast(what+" copied with formatting");return}
   copyText(htmlToText(html),what);
@@ -379,7 +386,7 @@ async function copyRich(html,what){
 function cleanUrl(u){u=(u||"").trim();if(!u)return"";if(!/^https?:\/\//i.test(u))u="https://"+u;try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x.href:""}catch(e){return""}}
 function host(u){try{const x=new URL(u);const f=decodeURIComponent(x.pathname.split("/").pop()||"");return x.hostname.replace(/^www\./,"")+(/\.\w{3,4}$/.test(f)?" · "+f:"")}catch(e){return u}}
 const mailto=(to,s,b)=>"mailto:"+encodeURIComponent(to||"").replace(/%40/g,"@").replace(/%2C/g,",")+"?subject="+encodeURIComponent(s||"")+"&body="+encodeURIComponent(b||"");
-function allIntakes(){const out=[];data.programs.forEach(p=>p.intakes.forEach(i=>out.push({p,i,start:startOf(i)})));return out.sort((a,b)=>(a.start||"9").localeCompare(b.start||"9"))}
+function allIntakes(ps=data.programs){const out=[];ps.forEach(p=>p.intakes.forEach(i=>out.push({p,i,start:startOf(i)})));return out.sort((a,b)=>(a.start||"9").localeCompare(b.start||"9"))}
 function nextIntake(p){const list=p.intakes.map(i=>({i,s:startOf(i)})).sort((a,b)=>(a.s||"9").localeCompare(b.s||"9"));const t=iso(today());return (list.find(x=>x.s>=t)||list[list.length-1]||{}).i}
 function status(i){const s=startOf(i),n=days(s),t=+i.target||0,e=+i.enrolled||0;
   if(t&&e>=t)return'<span class="pill full">Full</span>';if(n==null)return'<span class="pill">No start date</span>';
@@ -405,31 +412,35 @@ function labelsFor(scope){const s=new Set(["Program","Intake"]);const ps=scope==
   ps.forEach(p=>p.intakes.forEach(i=>i.dates.forEach(d=>d.label&&s.add(d.label.trim()))));if(s.size===2)DEF_DATES.forEach(x=>s.add(x));return[...s]}
 
 /* ---------- views ---------- */
-const VIEWS=["overview","programs","admin","faqs","notes","backup"];
+const allViews=(d=data)=>["overview","programs",...((d.settings&&d.settings.groups)||[]),"admin","faqs","notes","backup"];
+const isProgView=v=>v==="programs"||/^pg-/.test(v||"");
+const grp=()=>isProgView(view)?view:"programs";
+const gOf=p=>(p.group&&isProgView(p.group)?p.group:"programs");
+const progsIn=g=>data.programs.filter(p=>gOf(p)===g);
 const NAMES={overview:"Overview",programs:"Programs",admin:"Admin drafts",faqs:"FAQs",notes:"Notes",backup:"Settings and backup"};
-const nm=v=>((data.settings.tabNames||{})[v]||"").trim()||NAMES[v];
+const nm=v=>((data.settings.tabNames||{})[v]||"").trim()||NAMES[v]||"More programs";
 function renderNav(){const vis=data.settings.tabs.filter(v=>!data.settings.hidden.includes(v));$("nav").innerHTML=vis.map(v=>`<a href="#${v}" aria-current="${v===view?"page":"false"}">${esc(nm(v))}</a>`).join("")}
-function route(){if(mode==="auth"){showAuth();return}const vis=data.settings.tabs.filter(v=>!data.settings.hidden.includes(v));const h=(location.hash||"").slice(1);view=VIEWS.includes(h)?h:vis[0]||"overview";if(!cur||!P())cur=data.programs[0]?.id||null;applyTheme();render()}
+function route(){if(mode==="auth"){showAuth();return}const vis=data.settings.tabs.filter(v=>!data.settings.hidden.includes(v));const h=(location.hash||"").slice(1);view=allViews().includes(h)?h:vis[0]||"overview";if(isProgView(view)){const P0=P();if(!P0||gOf(P0)!==view)cur=progsIn(view)[0]?.id||null}else if(!cur||!P())cur=data.programs[0]?.id||null;applyTheme();render()}
 window.addEventListener("hashchange",()=>{reset();route()});
 function render(){
   renderNav();
   const note=mode==="local"&&FB_ON?`<div class="banner">You're using the hub without an account, so it's saved in this browser only. <button class="ghost" data-act="signin" style="min-height:36px;padding:0 6px;text-decoration:underline">Sign in or create an account</button> to keep it on all your devices.</div>`:mode==="local"?`<div class="banner">This hub is yours and is saved in this browser only. Download a backup from <a href="#backup">${esc(nm("backup"))}</a> now and then.</div>`:readOnly?'<div class="banner">View only.</div>':"";
-  $("view").innerHTML=note+({overview:vOverview,programs:vPrograms,admin:vAdmin,faqs:vFaqs,notes:vNotes,backup:vBackup}[view])();
+  $("view").innerHTML=note+(isProgView(view)?vPrograms():({overview:vOverview,admin:vAdmin,faqs:vFaqs,notes:vNotes,backup:vBackup}[view]||vOverview)());
 }
 
 function vOverview(){
-  const o=data.settings.ov,all=allIntakes(),t=iso(today()),lim=iso(new Date(today().getTime()+(+o.range)*864e5));
-  const up=[];data.programs.forEach(p=>{if(o.prog&&p.id!==o.prog)return;p.intakes.forEach(i=>i.dates.forEach(d=>{if(pd(d.date)&&d.date>=t&&d.date<=lim&&(!o.label||d.label.trim().toLowerCase()===o.label))up.push({p,i,d})}))});
-  if(o.notes&&!o.label)data.notes.forEach(n=>{if(!n.done&&pd(n.date)&&n.date<=lim&&(!o.prog||n.prog===o.prog))up.push({note:n,d:{date:n.date,label:n.text}})});
+  const o=data.settings.ov,PG=data.programs.filter(p=>!o.group||gOf(p)===o.group),all=allIntakes(PG),t=iso(today()),lim=iso(new Date(today().getTime()+(+o.range)*864e5));
+  const up=[];PG.forEach(p=>{if(o.prog&&p.id!==o.prog)return;p.intakes.forEach(i=>i.dates.forEach(d=>{if(pd(d.date)&&d.date>=t&&d.date<=lim&&(!o.label||d.label.trim().toLowerCase()===o.label))up.push({p,i,d})}))});
+  if(o.notes&&!o.label)data.notes.forEach(n=>{const np=data.programs.find(x=>x.id===n.prog);if(o.group&&(!np||gOf(np)!==o.group))return;if(!n.done&&pd(n.date)&&n.date<=lim&&(!o.prog||n.prog===o.prog))up.push({note:n,d:{date:n.date,label:n.text}})});
   up.sort((a,b)=>a.d.date.localeCompare(b.d.date));
-  const labels=[...new Set(data.programs.flatMap(p=>p.intakes.flatMap(i=>i.dates.map(d=>d.label.trim()).filter(Boolean))))].sort();
+  const labels=[...new Set(PG.flatMap(p=>p.intakes.flatMap(i=>i.dates.map(d=>d.label.trim()).filter(Boolean))))].sort();
   const sel=(id,lab,opts,val)=>`<label class="small" style="margin:0;display:flex;flex-direction:column;gap:2px;flex:1 1 140px">${lab}<select id="${id}" style="font-size:15px">${opts.map(([v,n])=>`<option value="${esc(v)}"${String(v)===String(val)?" selected":""}>${esc(n)}</option>`).join("")}</select></label>`;
-  const filters=`<div class="row" style="background:var(--panel);border-radius:12px;padding:10px 12px;margin-bottom:8px;align-items:flex-end">${sel("ov-range","Time frame",[[7,"Next 7 days"],[14,"Next 2 weeks"],[30,"Next 30 days"],[60,"Next 60 days"],[90,"Next 3 months"],[180,"Next 6 months"],[365,"Next 12 months"]],o.range)}${sel("ov-prog","Program",[["","All programs"]].concat(data.programs.map(p=>[p.id,p.name])),o.prog)}${sel("ov-label","Type of date",[["","All dates"]].concat(labels.map(l=>[l.toLowerCase(),l])),o.label)}${sel("ov-limit","Show",[[10,"10 dates"],[25,"25 dates"],[50,"50 dates"],[9999,"All"]],o.limit)}<label class="small" style="margin:0;display:flex;gap:6px;align-items:center;min-height:44px"><input type="checkbox" id="ov-notes" ${o.notes?"checked":""} style="width:20px;height:20px"> Include my notes</label></div>`;
+  const filters=`<div class="row" style="background:var(--panel);border-radius:12px;padding:10px 12px;margin-bottom:8px;align-items:flex-end">${sel("ov-range","Time frame",[[7,"Next 7 days"],[14,"Next 2 weeks"],[30,"Next 30 days"],[60,"Next 60 days"],[90,"Next 3 months"],[180,"Next 6 months"],[365,"Next 12 months"]],o.range)}${data.settings.groups.length?sel("ov-group","Program tab",[["","All program tabs"]].concat(["programs",...data.settings.groups].map(g=>[g,nm(g)])),o.group||""):""}${sel("ov-prog","Program",[["","All programs"]].concat(PG.map(p=>[p.id,p.name])),o.prog)}${sel("ov-label","Type of date",[["","All dates"]].concat(labels.map(l=>[l.toLowerCase(),l])),o.label)}${sel("ov-limit","Show",[[10,"10 dates"],[25,"25 dates"],[50,"50 dates"],[9999,"All"]],o.limit)}<label class="small" style="margin:0;display:flex;gap:6px;align-items:center;min-height:44px"><input type="checkbox" id="ov-notes" ${o.notes?"checked":""} style="width:20px;height:20px"> Include my notes</label></div>`;
   const active=all.filter(x=>!x.start||days(x.start)>=-30),upcoming=all.filter(x=>x.start&&x.start>=t);
   const enr=upcoming.reduce((s,x)=>s+(+x.i.enrolled||0),0),tgt=upcoming.reduce((s,x)=>s+(+x.i.target||0),0),nxt=upcoming[0];
   if(!data.programs.length)return`<h2>Welcome to your hub</h2><p>This hub is yours: your own programs, drafts, FAQs and colours. Start by pasting your academic calendar from Excel on the <a href="#backup">${esc(nm("backup"))}</a> page, or add programs one at a time on the <a href="#programs">${esc(nm("programs"))}</a> page.</p>`;
   let h=`<h2>${esc(nm("overview"))}</h2><div class="stats">
-<div class="stat"><b>${upcoming.length}</b><span>upcoming intakes across ${data.programs.length} programs</span></div>
+<div class="stat"><b>${upcoming.length}</b><span>upcoming intakes across ${PG.length} program${PG.length===1?"":"s"}</span></div>
 <div class="stat"><b>${enr}${tgt?` <small class="mut" style="font-size:.5em">of ${tgt}</small>`:""}</b><span>students enrolled in upcoming intakes</span></div>
 <div class="stat"><b>${nxt?esc(fmt(nxt.start,"short")):"None"}</b><span>${nxt?"next start: "+esc(nxt.p.name):"no upcoming start dates"}</span></div></div>`;
   h+=`<div class="ov"><div><h3>Upcoming dates <span class="small mut" style="font-weight:400">${up.length} found</span></h3>${filters}`;
@@ -442,16 +453,17 @@ function vOverview(){
 }
 
 function vPrograms(){
-  const list=data.programs.filter(p=>!q||p.name.toLowerCase().includes(q));
+  const G=grp(),inG=progsIn(G);{const P0=P();if(!P0||gOf(P0)!==G)cur=inG[0]?.id||null}
+  const list=inG.filter(p=>!q||p.name.toLowerCase().includes(q));
   let h=`<div class="two"><aside class="side"><input id="search" type="search" placeholder="Search programs" aria-label="Search programs" value="${esc(q)}"><ul class="tabs">`+
-    (list.length?list.map(p=>`<li><button class="tab" data-act="open" data-id="${p.id}" aria-current="${p.id===cur}"><span>${esc(p.name)}</span><small>${p.intakes.length} intakes</small></button></li>`).join(""):`<li class="empty">${data.programs.length?"No matches.":"No programs yet."}</li>`)+`</ul>`+
+    (list.length?list.map(p=>`<li><button class="tab" data-act="open" data-id="${p.id}" aria-current="${p.id===cur}"><span>${esc(p.name)}</span><small>${p.intakes.length} intakes</small></button></li>`).join(""):`<li class="empty">${inG.length?"No matches.":"No programs in this tab yet."}</li>`)+`</ul>`+
     (readOnly?"":`<form class="inl" data-form="addprog"><input name="name" placeholder="New program name" aria-label="New program name" autocomplete="off"><button class="pri">Add</button></form><button style="width:100%;margin-top:10px" data-act="bulk">Add dates to many programs</button>`)+`</aside><section>`;
   if(ui.bulk&&!readOnly)return h+bulkForm()+`</section></div>`;
   const p=P();
   if(!p)return h+`<h2>No program selected</h2><p class="mut">Add a program on the left, or paste your calendar on the <a href="#backup">${esc(nm("backup"))}</a> page.</p></section></div>`;
   const ed=!readOnly;
   h+=ui.rename?`<form class="inl" data-form="rename"><input name="name" value="${esc(p.name)}" aria-label="Program name" required><button class="pri">Save</button><button type="button" class="ghost" data-act="cancel">Cancel</button></form>`:
-    `<h3 style="margin:0"><span style="font-size:clamp(24px,3vw,32px);line-height:1.1">${esc(p.name)}</span>${ed?`<span class="row"><button class="ghost" data-act="rename">Rename</button>${ui.confirm==="prog"?`<button class="danger" data-act="delprog">Delete program and everything in it</button><button class="ghost" data-act="cancel">Keep</button>`:`<button class="ghost" data-act="ask" data-w="prog">Delete</button>`}</span>`:""}</h3>`;
+    `<h3 style="margin:0"><span style="font-size:clamp(24px,3vw,32px);line-height:1.1">${esc(p.name)}</span>${ed?`<span class="row">${data.settings.groups.length?`<select data-moveprog="${p.id}" aria-label="Move this program to another tab" style="width:auto;font-size:14px;min-height:40px">${["programs",...data.settings.groups].map(g=>`<option value="${g}"${g===gOf(p)?" selected":""}>${g===gOf(p)?"In: ":"Move to: "}${esc(nm(g))}</option>`).join("")}</select>`:""}<button class="ghost" data-act="rename">Rename</button>${ui.confirm==="prog"?`<button class="danger" data-act="delprog">Delete program and everything in it</button><button class="ghost" data-act="cancel">Keep</button>`:`<button class="ghost" data-act="ask" data-w="prog">Delete</button>`}</span>`:""}</h3>`;
   const SN={intakes:"Intakes and dates",files:"Links and files",drafts:"Email drafts"};
   const secTitle=k=>{const custom=(data.settings.secNames||{})[k];if(ui.secEdit===k&&ed)return`<form class="secname" data-form="secname" data-v="${k}"><input name="n" value="${esc(custom||"")}" placeholder="${SN[k]}" aria-label="Section name"><button class="pri">Save</button><button type="button" class="ghost" data-act="cancel">Cancel</button></form>`;
     const t=custom||SN[k];return`<span>${esc(t)}${k==="drafts"&&!custom?" for "+esc(p.name):""}${ed?`<button type="button" class="ghost" data-act="secname" data-v="${k}" style="min-height:36px;font-size:14px;font-weight:600;margin-left:4px" title="Rename this section">Rename</button>`:""}</span>`};
@@ -486,7 +498,7 @@ function rte(id,html,ph,scope){
   return`<div class="rte"><div class="tools" role="toolbar" aria-label="Formatting">
 <button type="button" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button><button type="button" data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button><button type="button" data-cmd="underline" title="Underline (Ctrl+U)"><u>U</u></button>
 <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button><button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
-<button type="button" data-cmd="link" title="Add a link">Link</button><button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button></div>
+<button type="button" data-cmd="justifyLeft" title="Align left" aria-label="Align left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></svg></button><button type="button" data-cmd="justifyCenter" title="Centre" aria-label="Centre"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></svg></button><button type="button" data-cmd="justifyRight" title="Align right" aria-label="Align right"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></svg></button><button type="button" data-cmd="link" title="Add a link">Link</button><button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button></div>
 <div class="ed" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message" data-ph="${esc(ph)}">${sanitize(html)}</div></div>
 ${scope?`<div class="chips"><span class="small mut" style="align-self:center">Insert:</span>${labelsFor(scope).map(l=>`<button type="button" class="chip" data-ins="[${esc(l)}]">[${esc(l)}]</button>`).join("")}</div>`:""}`;
 }
@@ -553,7 +565,7 @@ function bulkForm(){
   const row=`<div class="drow"><input name="dl" list="bk-labels" placeholder="e.g. Orientation" aria-label="Date name"><input name="dd" type="date" aria-label="Date"><button type="button" class="sq ghost" data-act="rowmv" data-d="-1" aria-label="Move this date up">↑</button><button type="button" class="sq ghost" data-act="rowmv" data-d="1" aria-label="Move this date down">↓</button><button type="button" class="sq ghost" data-act="rmrow" aria-label="Remove this date">×</button></div>`;
   return`<h2>Add dates to many programs</h2><p class="mut">Pick the programs, name the intake, and enter the dates once. They're added to every program you tick. If a program already has an intake with that name, its dates are updated.</p>
 <form class="form" data-form="bulk"><label>Programs</label><div class="row" style="margin-bottom:6px"><button type="button" class="ghost" data-act="bkall">Select all</button><button type="button" class="ghost" data-act="bknone">Clear</button></div>
-<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">${data.programs.map(p=>`<label style="margin:0;font-weight:400;display:flex;gap:8px;align-items:center;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px"><input type="checkbox" name="bp" value="${p.id}" style="width:20px;height:20px"${p.id===cur?" checked":""}> ${esc(p.name)}</label>`).join("")||'<p class="empty">Add some programs first.</p>'}</div>
+<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">${progsIn(grp()).map(p=>`<label style="margin:0;font-weight:400;display:flex;gap:8px;align-items:center;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px"><input type="checkbox" name="bp" value="${p.id}" style="width:20px;height:20px"${p.id===cur?" checked":""}> ${esc(p.name)}</label>`).join("")||'<p class="empty">Add some programs first.</p>'}</div>
 <div class="grid2" style="margin-top:6px"><div><label for="bk-n">Intake name</label><input id="bk-n" name="name" list="bk-names" required placeholder="e.g. May 2027"><datalist id="bk-names">${names.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div><div><label for="bk-t">Target seats (optional, same for all)</label><input id="bk-t" name="target" type="number" min="0"></div></div>
 <datalist id="bk-labels">${labels.map(l=>`<option value="${esc(l)}">`).join("")}</datalist>
 <label>Dates</label><div id="drows">${DEF_DATES.map(l=>row.replace('name="dl"',`name="dl" value="${esc(l)}"`)).join("")}</div>
@@ -613,6 +625,10 @@ ${isUserAcct(user.email)?`<p class="hint">You signed in with a username, so keep
 <div class="row" style="margin-top:8px"><label class="btn" for="st-iu" style="margin:0;cursor:pointer">Upload your own image</label><input type="file" id="st-iu" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0">${/^data:image\//.test(data.settings.icon||"")?`<button type="button" class="ghost" data-act="iconclear">Use letters instead</button>`:""}<span class="small mut">A square logo or picture works best. It's shrunk to icon size.</span></div>
 <label for="dstyle">Date style in emails</label><select id="dstyle" name="dateStyle" style="width:auto">${[["long","Monday, January 11, 2027"],["nodow","January 11, 2027"],["short","Jan 11, 2027"]].map(([v,n])=>`<option value="${v}"${v===data.dateStyle?" selected":""}>${n}</option>`).join("")}</select>
 <div class="row" style="margin-top:12px"><button class="pri"${readOnly?" disabled":""}>Save settings</button></div></form></section>
+<section class="box"><h3>Program tabs</h3><p class="mut" style="margin-top:-6px">Split your programs across more than one tab, for example <b>Vocational</b> and <b>Non-vocational</b>. Rename a tab here or below, and move a program between tabs from the dropdown on its page.</p>
+<div style="display:grid;gap:6px;max-width:560px">${["programs",...data.settings.groups].map(g=>`<div class="row" style="border:1.5px solid var(--line);border-radius:10px;padding:6px 8px 6px 12px;flex-wrap:nowrap"><input data-tabname="${g}" value="${esc((data.settings.tabNames||{})[g]||"")}" placeholder="${esc(nm(g))}" aria-label="Name for this program tab" style="flex:1;width:auto"><span class="small mut" style="white-space:nowrap">${progsIn(g).length} program${progsIn(g).length===1?"":"s"}</span>${g==="programs"?"":ui.confirm==="g"+g?`<button class="danger" data-act="delgroup" data-v="${g}">Remove tab</button>`:`<button class="ghost" data-act="ask" data-w="g${g}">Remove</button>`}</div>`).join("")}</div>
+<p class="hint">Removing a tab doesn't delete its programs. They move back to "${esc(nm("programs"))}".</p>
+<form class="inl" data-form="addgroup" style="max-width:560px;margin-top:10px"><input name="n" placeholder="New tab name, e.g. Non-vocational" aria-label="New program tab name"><button class="pri"${readOnly?" disabled":""}>Add program tab</button></form></section>
 <section class="box"><h3>Arrange and rename tabs</h3><p class="mut" style="margin-top:-6px">Type a new name for any tab (leave it blank to keep the original), move tabs up or down, and untick any you don't use. The first tab is the one that opens when you visit.</p>
 <ol style="list-style:none;padding:0;margin:0;display:grid;gap:6px;max-width:520px">${data.settings.tabs.map((v,k,arr)=>`<li class="row" style="border:1.5px solid var(--line);border-radius:10px;padding:4px 6px 4px 12px;flex-wrap:nowrap"><input type="checkbox" data-tabshow="${v}" ${data.settings.hidden.includes(v)?"":"checked"} ${v==="backup"?"disabled":""} style="width:20px;height:20px;flex:none" aria-label="Show ${esc(nm(v))} tab"><input data-tabname="${v}" value="${esc((data.settings.tabNames||{})[v]||"")}" placeholder="${NAMES[v]}" aria-label="Name for the ${NAMES[v]} tab" style="flex:1;width:auto"><button type="button" class="sq ghost" data-act="tabmv" data-v="${v}" data-d="-1" aria-label="Move ${esc(nm(v))} up" ${k===0?"disabled":""}>↑</button><button type="button" class="sq ghost" data-act="tabmv" data-v="${v}" data-d="1" aria-label="Move ${esc(nm(v))} down" ${k===arr.length-1?"disabled":""}>↓</button></li>`).join("")}</ol>
 <p class="hint">The ${esc(nm("backup"))} tab always stays visible so you can't lock yourself out.</p></section>
@@ -622,7 +638,7 @@ ${isUserAcct(user.email)?`<p class="hint">You signed in with a username, so keep
 Personal Support Worker	January 2027	2027-01-11	2027-08-27	2027-01-07	2026-12-11	30</div>
 <p class="small mut" style="margin-top:-4px">Example only. Use your real calendar.</p>
 <label for="imp">Paste here</label><textarea id="imp" placeholder="Paste rows from Excel"></textarea>
-<div class="row" style="margin-top:10px"><label for="dorder" style="margin:0">Dates like 03/04/2027 mean</label><select id="dorder" style="width:auto"><option value="mdy">March 4 (MM/DD/YYYY)</option><option value="dmy">3 April (DD/MM/YYYY)</option></select><button class="pri" data-act="import" ${readOnly?"disabled":""}>Import calendar</button></div>
+<div class="row" style="margin-top:10px">${data.settings.groups.length?`<label for="imptab" style="margin:0">Add new programs to</label><select id="imptab" style="width:auto">${["programs",...data.settings.groups].map(g=>`<option value="${g}">${esc(nm(g))}</option>`).join("")}</select>`:""}<label for="dorder" style="margin:0">Dates like 03/04/2027 mean</label><select id="dorder" style="width:auto"><option value="mdy">March 4 (MM/DD/YYYY)</option><option value="dmy">3 April (DD/MM/YYYY)</option></select><button class="pri" data-act="import" ${readOnly?"disabled":""}>Import calendar</button></div>
 <p id="impmsg" class="hint"></p></section>
 <section class="box"><h3>Back up everything</h3><p>Saves all your programs, intakes, links, drafts, FAQs and settings as one file. Keep a copy on OneDrive. You can also use it to move your hub to another computer.</p>
 <div class="row"><button class="pri" data-act="export">Download backup</button><button data-act="copyjson">Copy backup text</button></div></section>
@@ -644,7 +660,7 @@ function doImport(){
   const head=rows.shift();if(head.length<3){msg.textContent="I need at least three columns: Program, Intake and one date.";return}
   const order=$("dorder").value;let nP=0,nI=0,bad=0;
   rows.filter(r=>r.some(c=>c)).forEach(r=>{const pn=r[0],inn=r[1]||"Intake";if(!pn)return;
-    let p=data.programs.find(x=>x.name.toLowerCase()===pn.toLowerCase());if(!p){p={id:uid(),name:pn,links:[],drafts:[],intakes:[]};data.programs.push(p);nP++}
+    let p=data.programs.find(x=>x.name.toLowerCase()===pn.toLowerCase());if(!p){p={id:uid(),name:pn,links:[],drafts:[],intakes:[],group:($("imptab")&&$("imptab").value)||"programs"};data.programs.push(p);nP++}
     let i=p.intakes.find(x=>x.name.toLowerCase()===inn.toLowerCase());if(!i){i={id:uid(),name:inn,target:"",enrolled:"",dates:[]};p.intakes.push(i);nI++}
     head.slice(2).forEach((h,k)=>{const v=r[k+2]||"",hl=h.trim();if(!hl)return;
       if(/^target/i.test(hl)){if(v!=="")i.target=String(parseInt(v)||0);return}
@@ -670,9 +686,10 @@ document.addEventListener("input",e=>{const t=e.target;
 document.addEventListener("change",e=>{const t=e.target;
   if(t.dataset.fill){fill[t.dataset.fill]=t.value;render();return}
   if(t.id==="range"){range=+t.value;render();return}
+  if(t.dataset.moveprog){if(readOnly)return;const pr=data.programs.find(x=>x.id===t.dataset.moveprog);if(pr){pr.group=t.value;save(true);toast("Moved to "+nm(t.value));reset();cur=pr.id;location.hash=t.value}return}
   if(t.id==="iv"){intakeView=t.value;render();return}
   if(t.id==="fcat"){fcat=t.value;render();return}
-  if(/^ov-/.test(t.id)){const o=data.settings.ov,k=t.id.slice(3);o[k]=k==="notes"?t.checked:(k==="range"||k==="limit")?+t.value:t.value;if(!readOnly)save();render();return}
+  if(/^ov-/.test(t.id)){const o=data.settings.ov,k=t.id.slice(3);if(k==="group")o.prog="";o[k]=k==="notes"?t.checked:(k==="range"||k==="limit")?+t.value:t.value;if(!readOnly)save();render();return}
   if(t.dataset.tabname!==undefined&&t.matches("[data-tabname]")){if(readOnly)return;data.settings.tabNames[t.dataset.tabname]=t.value.trim();save();renderNav();toast("Tab name saved");return}
   if(t.id==="st-iu"&&t.files[0]){if(readOnly)return;const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=c.height=128;const x=c.getContext("2d");const m=Math.min(img.width,img.height);x.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,128,128);data.settings.icon=c.toDataURL("image/png");save(true);applyIcon();render();toast("Tab icon updated")};img.onerror=()=>toast("That file isn't an image I can read.");img.src=r.result};r.readAsDataURL(t.files[0]);return}
   if(t.id==="lf-i"||t.id==="lf-c"){const ic=$("lf-i").value;$("lf-cust").hidden=ic!=="custom";$("lf-prev").innerHTML=linkIcon({url:$("lf-u").value,icon:ic==="auto"?"":ic,iconText:$("lf-t").value.toUpperCase(),iconColor:$("lf-c").value});return}
@@ -690,6 +707,7 @@ document.addEventListener("click",e=>{
     if(cmd.dataset.cmd==="link"){const s=getSelection();if(!s.toString()){toast("Select the words to turn into a link first.");return}ui.linkRange=s.getRangeAt(0).cloneRange();
       const box=document.createElement("div");box.className="row";box.style.margin="8px";box.innerHTML='<input id="lnk-u" placeholder="Paste the web address" style="flex:1;width:auto" aria-label="Link address"><button type="button" class="pri" data-act="lnkok">Add link</button><button type="button" class="ghost" data-act="lnkno">Cancel</button>';
       cmd.closest(".tools").after(box);$("lnk-u").focus();return}
+    if(/^justify/.test(cmd.dataset.cmd)){try{document.execCommand("styleWithCSS",false,true)}catch(x){}}
     document.execCommand(cmd.dataset.cmd,false,null);return}
   const ins=e.target.closest("[data-ins]");
   if(ins){const ed=$("df-b");if(!ed.contains(getSelection().anchorNode)){ed.focus();const r=document.createRange();r.selectNodeContents(ed);r.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(r)}document.execCommand("insertText",false,ins.dataset.ins);return}
@@ -702,7 +720,7 @@ document.addEventListener("click",e=>{
   if(a==="pwreset"&&user){auth.sendPasswordResetEmail(user.email).then(()=>toast("Reset link sent to "+user.email)).catch(()=>toast("Couldn't send the link. Try again later."));return}
   if(a==="lnkok"||a==="lnkno"){const u=a==="lnkok"?cleanUrl($("lnk-u").value):"";const box=b.closest(".row");const ed=box.parentElement.querySelector(".ed");box.remove();
     if(u&&ui.linkRange){ed.focus();const s=getSelection();s.removeAllRanges();s.addRange(ui.linkRange);document.execCommand("createLink",false,u)}else if(a==="lnkok")toast("That address doesn't look right.");ui.linkRange=null;return}
-  if(a==="goprog"){cur=b.dataset.id;reset();location.hash="programs";return}
+  if(a==="goprog"){cur=b.dataset.id;reset();const pr=data.programs.find(x=>x.id===cur);const g=pr?gOf(pr):"programs";if(location.hash==="#"+g)route();else location.hash=g;return}
   if(a==="open"){cur=b.dataset.id;reset();render();return}
   if(a==="cancel"){reset();render();return}
   const list=s=>s==="admin"?data.admin:(data.programs.find(p=>p.id===s)||{}).drafts||[];
@@ -730,6 +748,7 @@ document.addEventListener("click",e=>{
   if(a==="newfaq"){reset();ui.edit="newfaq";render();$("fq-q")?.focus();return}
   if(a==="editfaq"){reset();ui.edit=b.dataset.id;render();$("fq-q")?.focus();return}
   if(a==="iconclear"){delete data.settings.icon;save(true);applyIcon();render();toast("Using letters for the icon");return}
+  if(a==="delgroup"&&!readOnly){const g=b.dataset.v;data.programs.forEach(p=>{if(p.group===g)p.group="programs"});data.settings.groups=data.settings.groups.filter(x=>x!==g);data.settings.tabs=data.settings.tabs.filter(x=>x!==g);data.settings.hidden=data.settings.hidden.filter(x=>x!==g);delete data.settings.tabNames[g];if(data.settings.ov.group===g)data.settings.ov.group="";reset();save(true);render();toast("Tab removed");return}
   if(a==="togpast"){showPastI=!showPastI;render();return}
   if(a==="secname"){reset();ui.secEdit=b.dataset.v;render();document.querySelector("[data-form=secname] input")?.focus();return}
   if(a==="secmv"){const t=data.settings.progOrder,k=t.indexOf(b.dataset.v),j=k+(+b.dataset.d);if(k<0||j<0||j>=t.length){toast("Already at the "+(j<0?"top":"bottom")+".");return}[t[k],t[j]]=[t[j],t[k]];save();render();return}
@@ -745,7 +764,7 @@ document.addEventListener("click",e=>{
   if(a==="delfaq"){data.faqs=data.faqs.filter(x=>x.id!==b.dataset.id);reset();save();render();return}
   const p=P();if(!p)return;
   if(a==="rename"){reset();ui.rename=true;render();return}
-  if(a==="delprog"){data.programs=data.programs.filter(x=>x.id!==p.id);cur=data.programs[0]?.id||null;reset();save(true);render();toast("Program deleted");return}
+  if(a==="delprog"){data.programs=data.programs.filter(x=>x.id!==p.id);cur=progsIn(grp())[0]?.id||null;reset();save(true);render();toast("Program deleted");return}
   if(a==="newintake"){reset();ui.edit="newintake";render();$("if-n")?.focus();return}
   if(a==="editintake"){reset();ui.edit=b.dataset.id;render();$("if-n")?.focus();return}
   if(a==="dupintake"){const i=p.intakes.find(x=>x.id===b.dataset.id);if(!i)return;const c=JSON.parse(JSON.stringify(i));c.id=uid();c.name=i.name+" (new term)";c.enrolled="";p.intakes.push(c);reset();ui.edit=c.id;save();render();$("if-n")?.focus();toast("Copied. Rename it and move the dates.");return}
@@ -761,6 +780,8 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="lnk-u
 document.addEventListener("submit",e=>{
   const f=e.target.closest("[data-form]");if(!f)return;e.preventDefault();
   if(f.dataset.form==="auth"){doAuth(f);return}
+  if(f.dataset.form==="addgroup"&&!readOnly){const n=f.elements.n.value.trim()||"More programs";const g="pg-"+Math.random().toString(36).slice(2,8);data.settings.groups.push(g);data.settings.tabNames[g]=n;
+    const t=data.settings.tabs;const last=Math.max(...t.map((v,k)=>isProgView(v)?k:-1));t.splice(last+1,0,g);reset();save(true);render();toast(`"${n}" tab added`);return}
   if(f.dataset.form==="secname"&&!readOnly){data.settings.secNames=data.settings.secNames||{};data.settings.secNames[f.dataset.v]=f.elements.n.value.trim();reset();save();render();toast("Section renamed");return}
   if(f.dataset.form==="chpw"){const o=f.elements.old.value,n=f.elements.nw.value,er=$("cp-err");er.textContent="";
     if(n.length<8){er.textContent="Use at least 8 characters for the new password.";return}
@@ -771,7 +792,7 @@ document.addEventListener("submit",e=>{
   const v=n=>(f.elements[n]&&f.elements[n].value||"").trim(),k=f.dataset.form;
   if(k==="settings"){data.settings.name=v("name");data.settings.tagline=v("tagline");data.settings.color=$("st-c").value;data.settings.iconText=v("iconText").toUpperCase();data.dateStyle=v("dateStyle")||"long";save(true);applyTheme();render();toast("Settings saved");return}
   if(k==="addprog"){const n=v("name");if(!n)return;if(data.programs.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast("That program already exists.");return}
-    const p={id:uid(),name:n,links:[],drafts:[],intakes:[]};data.programs.push(p);normalize(data);cur=p.id;reset();save(true);render();return}
+    const p={id:uid(),name:n,links:[],drafts:[],intakes:[],group:grp()};data.programs.push(p);normalize(data);cur=p.id;reset();save(true);render();return}
   if(k==="draft"){const body={title:v("title"),to:v("to"),subject:v("subject"),html:sanitize($("df-b").innerHTML)};
     const l=f.dataset.s==="admin"?data.admin:data.programs.find(p=>p.id===f.dataset.s).drafts;
     const id=f.dataset.id;if(id){const x=l.find(x=>x.id===id);if(x){Object.assign(x,body);delete x.body}openDrafts.add(id)}else{const nid=uid();l.push(Object.assign({id:nid},body));openDrafts.add(nid)}
