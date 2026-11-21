@@ -244,7 +244,8 @@ function normalize(d){d=d&&typeof d==="object"?d:{};d.programs=Array.isArray(d.p
   const fix=x=>{if(x.html==null)x.html=textToHtml(x.body||"")};
   d.admin.forEach(fix);d.faqs.forEach(f=>{if(f.html==null)f.html=textToHtml(f.answer||"")});
   d.programs.forEach(p=>{p.links=p.links||[];p.drafts=p.drafts||[];p.drafts.forEach(fix);p.intakes=p.intakes||[];p.intakes.forEach(i=>i.dates=i.dates||[])});
-  d.programs.sort((a,b)=>((a.code||"").trim()&&(b.code||"").trim()?a.code.trim().localeCompare(b.code.trim(),undefined,{numeric:true}):0)||a.name.localeCompare(b.name,undefined,{numeric:true}));return d}
+  d.programs.sort((a,b)=>{const ca=(a.code||"").trim(),cb=(b.code||"").trim();if(ca&&!cb)return-1;if(!ca&&cb)return 1;
+    return(ca&&cb?ca.localeCompare(cb,undefined,{numeric:true,sensitivity:"base"}):0)||a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:"base"})});return d}
 function save(now){
   data.updated=Date.now();
   if(mode==="local"){try{localStorage.setItem(LS,JSON.stringify(data))}catch(e){toast("Couldn't save in this browser. Download a backup now.")}return}
