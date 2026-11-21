@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Program Hub</title>
+<link rel="icon" id="fav" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23800000%22/%3E%3Ctext x=%2232%22 y=%2242%22 font-family=%22Arial%22 font-weight=%22bold%22 font-size=%2228%22 fill=%22white%22 text-anchor=%22middle%22%3EPH%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" id="fav2" href="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: tidy office binder, calm and quick to scan
+   IDEA: a term planner: intakes and their dates drive everything else
+   PICTURE: the overview's upcoming-dates list with large hanging dates, then enrolment bars
+   COLOUR and TYPE: white and ink, one theme colour the owner picks; Figtree throughout
+   LAYOUT: coloured band with tabs, then one working view at a time */
+:root{color-scheme:light dark;--c:#800000;--headink:#fff;
+--bg:light-dark(#fff,#131314);--panel:light-dark(color-mix(in srgb,var(--c) 6%,#fff),color-mix(in srgb,var(--c) 14%,#18181a));
+--ink:light-dark(#16161a,#eeeef0);--mut:light-dark(#5e5e66,#a3a3ad);--line:light-dark(color-mix(in srgb,var(--c) 14%,#e4e4e8),color-mix(in srgb,var(--c) 20%,#2c2c30));
+--acc:light-dark(var(--c),color-mix(in srgb,var(--c) 45%,#fff));--head:var(--c);--on:light-dark(#fff,#111);--bad:light-dark(#b3261e,#ff8a80);--fill:light-dark(#fdeccc,#4a3a14)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Figtree,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(20px,3vw,36px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+header{background:var(--head);color:var(--headink);padding:clamp(20px,3vw,32px) max(5vw,16px) 0}
+h1{font-size:clamp(32px,4.5vw,44px);line-height:1.05;margin:0 0 4px;font-weight:800}
+header p{margin:0 0 16px;opacity:.9}
+nav{display:flex;gap:4px;overflow-x:auto}
+nav a{flex:none;color:var(--headink);text-decoration:none;font-weight:600;padding:12px 16px;border-radius:10px 10px 0 0;opacity:.85}
+nav a[aria-current=page]{background:var(--bg);color:var(--acc);opacity:1}
+h2{font-size:clamp(24px,3vw,32px);line-height:1.1;margin:0 0 6px}
+h3{font-size:20px;margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+a{color:var(--acc)}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+textarea{min-height:160px;resize:vertical;line-height:1.5}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+label{display:block;font-weight:600;font-size:14px;margin:10px 0 4px}
+button,.btn{font:inherit;font-size:15px;font-weight:600;min-height:44px;padding:0 14px;border-radius:10px;border:1.5px solid var(--acc);background:var(--bg);color:var(--acc);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
+button.pri,.btn.pri{background:var(--acc);color:var(--on)}
+button.ghost{border-color:transparent;padding:0 10px}
+button.danger{border-color:var(--bad);color:var(--bad)}
+button.sq{width:44px;padding:0;font-size:20px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.end{justify-content:flex-end}
+.mut{color:var(--mut)}.small{font-size:14px}
+.banner{background:var(--panel);border-left:5px solid var(--acc);border-radius:8px;padding:10px 14px;font-size:15px;margin-bottom:18px}
+section.box{border-top:1px solid var(--line);padding-top:18px;margin-top:24px}
+.empty{color:var(--mut);font-size:15px;margin:4px 0}
+.hint{font-size:14px;color:var(--mut);margin:8px 0 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0 6px}
+.stat{background:var(--panel);border-radius:14px;padding:14px 16px}
+.stat b{display:block;font-size:clamp(28px,4vw,38px);line-height:1.1;font-weight:800}
+.stat span{font-size:14px;color:var(--mut)}
+.ov{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:28px;margin-top:20px}
+@media(max-width:900px){.ov{grid-template-columns:minmax(0,1fr)}}
+.dates{list-style:none;margin:0;padding:0}
+.dates li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.cal{background:var(--panel);border-radius:10px;text-align:center;padding:6px 0;line-height:1.1}
+.cal small{display:block;font-size:13px;font-weight:600;color:var(--acc);text-transform:uppercase}
+.cal b{font-size:24px;font-weight:800}
+.dates .what{font-weight:600}.dates .sub{font-size:14px;color:var(--mut)}
+.soon{color:var(--acc);font-weight:600;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-size:13px;color:var(--mut);font-weight:600;padding:6px 8px;border-bottom:1.5px solid var(--line)}
+td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num{text-align:right;white-space:nowrap}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--panel)}
+.bar{height:10px;background:var(--panel);border-radius:99px;overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.pill{font-size:13px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--panel);white-space:nowrap}
+.pill.full{background:var(--acc);color:var(--on)}
+.two{display:grid;grid-template-columns:minmax(0,270px) minmax(0,1fr);gap:28px;align-items:start}
+@media(max-width:820px){.two{grid-template-columns:minmax(0,1fr)}}
+.side{background:var(--panel);border-radius:16px;padding:14px}
+.tabs{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:6px;max-height:60vh;overflow:auto}
+.tab{width:100%;text-align:left;display:flex;justify-content:space-between;gap:8px;align-items:center;min-height:48px;padding:8px 12px;border-radius:10px;border:1.5px solid transparent;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+.tab[aria-current=true]{border-color:var(--acc);box-shadow:inset 5px 0 0 var(--acc)}
+.tab small{color:var(--mut);font-size:13px;white-space:nowrap}
+.inl{display:flex;gap:8px}.inl input{flex:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.card{border:1.5px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h4{margin:0 0 4px;font-size:17px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:14px;margin:10px 0}
+.dl dt{color:var(--mut)}.dl dd{margin:0}
+.past{color:var(--mut);text-decoration:line-through}
+.files{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.file{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1.5px solid var(--line);border-radius:12px;padding:6px 8px 6px 14px}
+.file a.name{flex:1 1 220px;font-weight:600;color:var(--ink);text-decoration:none;display:flex;gap:10px;align-items:center;min-height:40px}
+.file a.name:hover{color:var(--acc);text-decoration:underline}
+.xl{flex:none;width:32px;height:32px;border-radius:8px;background:#1d6f42;color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center;letter-spacing:-.02em;line-height:1}
+.xl svg{width:18px;height:18px}
+.secname{display:inline-flex;gap:6px;align-items:center;flex:1 1 260px}.secname input{max-width:340px}
+.host{color:var(--mut);font-size:13px;font-weight:400;display:block;overflow-wrap:anywhere}
+.drafts{display:grid;gap:14px}
+.draft{border:1.5px solid var(--line);border-radius:12px;padding:14px 16px}
+.draft h4{margin:0 0 6px;font-size:17px}
+.fillrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.fillrow select{flex:1 1 240px;width:auto}
+.subj{font-size:15px;margin:0 0 8px;overflow-wrap:anywhere}
+.body{font-size:15px;background:var(--panel);border-radius:8px;padding:10px 14px;max-height:260px;overflow:auto;margin:0 0 10px;overflow-wrap:anywhere}
+.body table,.ed table{border-collapse:collapse;margin:0 0 .8em;max-width:100%}
+.body td,.body th,.ed td,.ed th{border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);padding:4px 8px;text-align:left;vertical-align:top;font-size:15px;min-width:40px}
+.body th,.ed th{font-weight:700;background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.body{overflow-x:auto}
+details.draft{padding:0}
+details.draft>summary{list-style:none;cursor:pointer;display:flex;gap:12px;align-items:center;padding:12px 16px;min-height:56px}
+details.draft>summary::-webkit-details-marker{display:none}
+details.draft>summary::after{content:"+";font-size:22px;color:var(--acc);flex:none;margin-left:auto}
+details.draft[open]>summary::after{content:"−"}
+details.draft>summary .st{display:block;font-weight:700;font-size:17px}
+details.draft>summary .ss{display:block;font-size:15px;color:var(--mut);overflow-wrap:anywhere}
+details.draft .in{padding:0 16px 14px}
+details.intake .st{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media(max-width:600px){.hide-sm{display:none}}
+.body p,.ed p{margin:0 0 .6em}.body ul,.body ol,.ed ul,.ed ol{margin:0 0 .6em;padding-left:1.4em}
+mark{background:var(--fill);color:inherit;border-radius:3px;padding:0 2px}
+mark.miss{background:none;color:var(--bad);font-weight:600;outline:1.5px dashed var(--bad)}
+.form{border:1.5px dashed var(--acc);border-radius:12px;padding:14px 16px;margin:10px 0}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}
+.grid3{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:0 12px}
+@media(max-width:600px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.drow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 44px 44px 44px;gap:6px;margin-bottom:8px}
+@media(max-width:600px){.drow{grid-template-columns:minmax(0,1fr) 44px 44px 44px;padding-bottom:8px;border-bottom:1px solid var(--line)}.drow input[name=dl]{grid-column:1/-1}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chip{min-height:34px;font-size:14px;padding:0 10px;border-radius:99px;border-width:1px}
+.rte{border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.tools{display:flex;flex-wrap:wrap;gap:2px;padding:4px;background:var(--panel);border-bottom:1px solid var(--line)}
+.tools button{min-height:38px;min-width:40px;padding:0 10px;border:0;background:none;color:var(--ink);font-size:15px}
+.tools button:hover{background:var(--bg)}
+.ed{min-height:200px;max-height:480px;overflow:auto;padding:12px 14px;outline:none;line-height:1.5}
+.ed:focus{box-shadow:inset 0 0 0 2px var(--acc)}
+.ed:empty::before{content:attr(data-ph);color:var(--mut)}
+.faq{border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px}
+.faq summary{cursor:pointer;padding:12px 16px;font-weight:600;display:flex;justify-content:space-between;gap:10px;list-style:none;min-height:48px;align-items:center}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-size:22px;color:var(--acc);flex:none}
+.faq[open] summary::after{content:"−"}
+.faq .in{padding:0 16px 14px}
+.swatches{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+.sw{width:52px;height:52px;border-radius:50%;border:3px solid var(--bg);box-shadow:0 0 0 1.5px var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed=true]{box-shadow:0 0 0 3px var(--ink)}
+input[type=color]{width:64px;height:48px;padding:2px}
+.acct{float:right;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;font-size:14px;margin:4px 0 8px 16px;max-width:100%}
+.acct span{opacity:.9;overflow-wrap:anywhere}
+.acct button{min-height:38px;font-size:14px;border-color:currentColor;color:var(--headink);background:transparent}
+.auth{max-width:440px;margin:clamp(8px,4vw,40px) auto;background:var(--panel);border-radius:18px;padding:clamp(20px,4vw,32px)}
+.auth h2{margin-bottom:4px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg);border-radius:12px;padding:4px;margin:16px 0 6px}
+.seg button{border:0;min-height:42px}.seg button[aria-pressed=true]{background:var(--acc);color:var(--on)}
+.auth .err{color:var(--bad);font-size:15px;margin:10px 0 0;min-height:1em}
+.auth .okmsg{color:var(--ink);background:var(--bg);border-radius:10px;padding:10px 12px;font-size:15px;margin-top:10px}
+.or{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:14px;margin:18px 0 10px}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:15px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw}
+.toast.on{opacity:1}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+@media(max-width:600px){.stack thead{display:none}.stack tr{display:grid;padding-block:8px;border-bottom:1px solid var(--line)}.stack td{border:0;padding:3px 0;text-align:left}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div class="acct" id="acct"></div>
+<h1 id="hubname">Program Hub</h1>
+<p id="hubsub">Intakes, enrolments, spreadsheets, email drafts and FAQs for every program.</p>
+<nav id="nav" aria-label="Sections">
+</nav>
+</div></header>
+<main class="band"><div class="wrap" id="view"><p class="empty">Loading…</p></div></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="clipbox" aria-hidden="true" style="position:fixed;left:-9999px;top:0;width:600px;background:#fff;color:#000"></div>
+
+<script>
+/* ===================== SIGN-IN SETUP =====================
+   Paste your Firebase config between the { } below.
+   Leave it empty and the hub works without sign-in
+   (saved in each person's browser only).
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBKc6FYMS-yGUruK13508Dc3m2Y7Pw_Nxo",
+  authDomain: "program-hub-5a179.firebaseapp.com",
+  projectId: "program-hub-5a179",
+  storageBucket: "program-hub-5a179.firebasestorage.app",
+  messagingSenderId: "23967235780",
+  appId: "1:23967235780:web:b4b68c92f9fc5e00da1391"
+};
+/* ========================================================= */
+{
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const DEF_DATES=["Start date","End date","Orientation","Application deadline","Fee deadline"];
+const THEMES=[["Maroon","#800000"],["Navy","#1f3a68"],["Forest","#2c5e3f"],["Teal","#0f6b6b"],["Plum","#5b2a6e"],["Slate","#3d4655"],["Burnt orange","#a8471a"],["Rose","#9c2f5a"]];
+let data={programs:[],admin:[],faqs:[],notes:[],dateStyle:"long",settings:{tabs:["overview","programs","admin","faqs","notes","backup"],hidden:[],tabNames:{},progOrder:["intakes","files","drafts"],ov:{range:60,prog:"",label:"",limit:25,notes:true}}};
+let mode="loading",readOnly=false,view="overview",cur=null,q="",fq="",fcat="",range=60;
+let ui={};const fill={};let showPastI=false,intakeView="cur",intakeQ="";const openDrafts=new Set(),openIntakes=new Set(),closedIntakes=new Set();
+const reset=()=>{ui={}};
+
+/* ---------- dates ---------- */
+const pd=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||"");return m?new Date(+m[1],m[2]-1,+m[3]):null};
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const days=s=>{const d=pd(s);return d?Math.round((d-today())/864e5):null};
+function fmt(s,style){const d=pd(s);if(!d)return s||"";style=style||data.dateStyle;
+  if(style==="short")return d.toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"});
+  if(style==="nodow")return d.toLocaleDateString("en-CA",{month:"long",day:"numeric",year:"numeric"});
+  return d.toLocaleDateString("en-CA",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
+const away=n=>n===0?"today":n===1?"tomorrow":n<0?(-n)+" days ago":"in "+n+" days";
+const startOf=i=>{const ds=(i.dates||[]).filter(d=>pd(d.date));const s=ds.find(d=>/start/i.test(d.label));return s?s.date:(ds.map(d=>d.date).sort()[0]||"")};
+
+/* ---------- rich text ---------- */
+const OK_TAGS={B:"b",STRONG:"b",I:"i",EM:"i",U:"u",P:"p",DIV:"p",BR:"br",UL:"ul",OL:"ol",LI:"li",A:"a",H1:"b",H2:"b",H3:"b",H4:"b",TABLE:"table",THEAD:"thead",TBODY:"tbody",TFOOT:"tbody",TR:"tr",TD:"td",TH:"th"};
+function sanitize(html){
+  const doc=new DOMParser().parseFromString("<body>"+(html||"")+"</body>","text/html");const out=document.createElement("div");
+  (function walk(src,dst){src.childNodes.forEach(n=>{
+    if(n.nodeType===3){dst.appendChild(document.createTextNode(n.nodeValue));return}
+    if(n.nodeType!==1)return;const tag=n.tagName;if(/^(SCRIPT|STYLE|META|LINK|TITLE|HEAD|O:P|XML)$/i.test(tag))return;
+    let t=OK_TAGS[tag];const st=(n.getAttribute("style")||"").toLowerCase();let wrap=dst;
+    if(!t&&tag==="SPAN"||!t&&tag==="FONT"){const parts=[];if(/font-weight\s*:\s*(bold|[6-9]00)/.test(st))parts.push("b");if(/font-style\s*:\s*italic/.test(st))parts.push("i");if(/text-decoration[^;]*underline/.test(st))parts.push("u");
+      parts.forEach(p=>{const e=document.createElement(p);wrap.appendChild(e);wrap=e});walk(n,wrap);return}
+    if(!t){walk(n,dst);return}
+    const e=document.createElement(t);
+    if(t==="td"||t==="th"){["colspan","rowspan"].forEach(a=>{const v=n.getAttribute(a);if(/^\d{1,2}$/.test(v||""))e.setAttribute(a,v)})}
+    if(t==="a"){const h=n.getAttribute("href")||"";if(/^(https?:|mailto:)/i.test(h)){e.setAttribute("href",h)}else{walk(n,dst);return}}
+    dst.appendChild(e);if(t!=="br")walk(n,e)})})(doc.body,out);
+  return out.innerHTML.replace(/<p><\/p>/g,"<p><br></p>");
+}
+const textToHtml=t=>String(t||"").split(/\n{2,}/).map(p=>"<p>"+esc(p).replace(/\n/g,"<br>")+"</p>").join("");
+function htmlToText(h){const d=document.createElement("div");d.innerHTML=String(h||"").replace(/<\/t[dh]>/gi,"\t$&").replace(/<\/tr>/gi,"$&\n").replace(/<br\s*\/?>/gi,"\n").replace(/<\/(p|div|li|h\d)>/gi,"$&\n").replace(/<li>/gi,"<li>• ");return d.textContent.replace(/\n{3,}/g,"\n\n").trim()}
+
+/* ---------- storage ---------- */
+const LS="programhub-v2";const FB_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey);let auth=null,fs=null,user=null,unsub=null;let doc=null,writing=Promise.resolve(),saveT=null;
+function normalize(d){d=d&&typeof d==="object"?d:{};d.programs=Array.isArray(d.programs)?d.programs:[];d.admin=Array.isArray(d.admin)?d.admin:[];d.faqs=Array.isArray(d.faqs)?d.faqs:[];d.dateStyle=d.dateStyle||"long";d.settings=d.settings||{};d.notes=Array.isArray(d.notes)?d.notes:[];
+  const ord=Array.isArray(d.settings.tabs)?d.settings.tabs.filter(v=>VIEWS.includes(v)):[];VIEWS.forEach(v=>{if(ord.includes(v))return;const b=ord.indexOf("backup");if(v!=="backup"&&b>-1)ord.splice(b,0,v);else ord.push(v)});d.settings.tabs=ord;
+  d.settings.secNames=d.settings.secNames&&typeof d.settings.secNames==="object"?d.settings.secNames:{};
+  d.settings.tabNames=d.settings.tabNames&&typeof d.settings.tabNames==="object"?d.settings.tabNames:{};
+  {const PO=["intakes","files","drafts"];const po=Array.isArray(d.settings.progOrder)?d.settings.progOrder.filter(x=>PO.includes(x)):[];PO.forEach(x=>{if(!po.includes(x))po.push(x)});d.settings.progOrder=po}
+  d.settings.hidden=Array.isArray(d.settings.hidden)?d.settings.hidden.filter(v=>v!=="backup"):[];
+  d.settings.ov=Object.assign({range:60,prog:"",label:"",limit:25,notes:true},d.settings.ov||{});
+  const fix=x=>{if(x.html==null)x.html=textToHtml(x.body||"")};
+  d.admin.forEach(fix);d.faqs.forEach(f=>{if(f.html==null)f.html=textToHtml(f.answer||"")});
+  d.programs.forEach(p=>{p.links=p.links||[];p.drafts=p.drafts||[];p.drafts.forEach(fix);p.intakes=p.intakes||[];p.intakes.forEach(i=>i.dates=i.dates||[])});
+  d.programs.sort((a,b)=>a.name.localeCompare(b.name));return d}
+function save(now){
+  data.updated=Date.now();
+  if(mode==="local"){try{localStorage.setItem(LS,JSON.stringify(data))}catch(e){toast("Couldn't save in this browser. Download a backup now.")}return}
+  if(mode!=="db"&&mode!=="cloud")return;
+  clearTimeout(saveT);saveT=setTimeout(()=>{saveT=null;const body=JSON.parse(JSON.stringify(data));const d=doc;writing=writing.then(()=>d.set(body)).catch(fail)},now?0:700);
+}
+function fail(e){
+  if(e&&e.code==="invalid_argument"){readOnly=true;render();toast("You can view this hub but not change it.")}
+  else if(e&&e.code==="quota_exceeded")toast("Storage is full. Delete some old drafts.");
+  else if(e&&e.code==="permission-denied")toast("That change didn't save. Sign out and sign back in, then try again.");
+  else if(e&&e.code==="invalid-argument")toast("Your hub is too big to save. Remove an uploaded icon or some long drafts.");
+  else toast("That change didn't save. Check your connection.");
+}
+function startLocal(){
+  mode="local";renderAcct();let raw=null;try{raw=localStorage.getItem(LS)}catch(e){}
+  if(raw){try{data=normalize(JSON.parse(raw))}catch(e){data=normalize({})}}
+  else{let old=null;try{old=JSON.parse(localStorage.getItem("programhub-v1")||"null")}catch(e){}data=normalize({programs:old||[]});if(old)save()}
+  route();
+}
+/* ---------- accounts ---------- */
+const UDOM=()=>(FIREBASE_CONFIG.authDomain||"users.invalid").toLowerCase();
+const toLogin=v=>{v=v.trim();if(v.includes("@"))return{email:v,isUser:false};const u=v.toLowerCase();return{email:u+"@"+UDOM(),isUser:true,u}};
+const isUserAcct=e=>(e||"").toLowerCase().endsWith("@"+UDOM());
+const shown=e=>isUserAcct(e)?e.slice(0,e.lastIndexOf("@")):e;
+const isGuest=()=>{try{return localStorage.getItem("ph-guest")==="1"}catch(e){return false}};
+function renderAcct(){const a=$("acct");if(!a)return;
+  if(mode==="cloud"&&user)a.innerHTML=`<span>${esc(shown(user.email)||"Signed in")}</span><button type="button" data-act="signout">Sign out</button>`;
+  else if(FB_ON&&mode==="local")a.innerHTML=`<span>Not signed in</span><button type="button" data-act="signin">Sign in</button>`;
+  else a.innerHTML=""}
+function startCloud(u){
+  mode="cloud";user=u;renderAcct();doc=fs.collection("users").doc(u.uid);let first=true;
+  $("view").innerHTML='<p class="empty">Loading your hub…</p>';
+  const t=setTimeout(()=>{if(first)$("view").innerHTML='<p class="empty">Still trying to reach your hub. Check your internet connection.</p>'},10000);
+  unsub=doc.onSnapshot(s=>{
+    if(s.metadata.hasPendingWrites)return;
+    clearTimeout(t);
+    if(!s.exists){if(first){first=false;let local=null;try{local=JSON.parse(localStorage.getItem(LS)||"null")}catch(e){}
+        data=normalize(local||{});const has=local&&((local.programs||[]).length||(local.admin||[]).length||(local.faqs||[]).length||(local.notes||[]).length);
+        save(true);route();if(has)toast("Your hub from this browser is now saved in your account.")}return}
+    first=false;data=normalize(JSON.parse(JSON.stringify(s.data())));
+    if(document.querySelector("#view form:not([data-form=settings])")&&view!=="backup")return;route();
+  },e=>{clearTimeout(t);$("view").innerHTML=`<p class="empty">Couldn't open your hub (${esc(e.code||"error")}). Sign out and sign back in.</p>`});
+}
+const AUTH_ERR={"auth/invalid-credential":"That email or password isn't right.","auth/wrong-password":"That email or password isn't right.","auth/user-not-found":"That email or password isn't right.","auth/invalid-login-credentials":"That email or password isn't right.","auth/email-already-in-use":"There's already an account with that email. Sign in instead.","auth/weak-password":"Use a password of at least 8 characters.","auth/invalid-email":"That email address doesn't look right.","auth/too-many-requests":"Too many tries. Wait a few minutes, or reset your password.","auth/network-request-failed":"No connection. Check your internet and try again.","auth/operation-not-allowed":"Email sign-in isn't turned on yet in Firebase (Authentication → Sign-in method → Email/Password)."};
+function showAuth(){mode="auth";data=normalize({});renderAcct();$("nav").innerHTML="";applyTheme();
+  const tab=ui.authTab||"in";
+  const pw=(id,ac)=>`<div style="position:relative"><input id="${id}" name="${id}" type="password" autocomplete="${ac}" required minlength="${tab==="up"?8:1}" style="padding-right:76px"><button type="button" class="ghost" data-act="showpw" data-for="${id}" style="position:absolute;right:2px;top:2px;min-height:40px;font-size:14px">Show</button></div>`;
+  $("view").innerHTML=`<div class="auth"><h2>${tab==="reset"?"Reset your password":"Welcome"}</h2><p class="mut" style="margin:0">${tab==="reset"?"Enter the email you signed up with and we'll send you a link to set a new password. If you signed up with a username, ask whoever runs this hub to reset your account.":"Sign in to see your hub on any computer or phone."}</p>
+${tab==="reset"?"":`<div class="seg" role="group" aria-label="Sign in or create an account"><button type="button" data-act="authtab" data-v="in" aria-pressed="${tab==="in"}">Sign in</button><button type="button" data-act="authtab" data-v="up" aria-pressed="${tab==="up"}">Create account</button></div>`}
+<form data-form="auth" data-tab="${tab}" novalidate><label for="au-e">${tab==="reset"?"Email":"Username or email"}</label><input id="au-e" name="email" type="${tab==="reset"?"email":"text"}" autocomplete="username" autocapitalize="none" spellcheck="false" required value="${esc(ui.authEmail||"")}">
+${tab==="up"?`<p class="hint" style="margin-top:4px">Use an email if you want to be able to reset a forgotten password yourself. A username works too (letters, numbers, dots, dashes or underscores, 3 to 30 characters), but a forgotten password can't be reset by email.</p>`:""}
+${tab==="reset"?"":`<label for="au-p">Password${tab==="up"?" (at least 8 characters)":""}</label>${pw("au-p",tab==="up"?"new-password":"current-password")}`}
+${tab==="up"?`<label for="au-p2">Type the password again</label>${pw("au-p2","new-password")}`:""}
+<p class="err" id="au-err" role="alert"></p>${ui.authMsg?`<p class="okmsg">${esc(ui.authMsg)}</p>`:""}
+<button class="pri" style="width:100%;margin-top:12px">${tab==="up"?"Create account":tab==="reset"?"Send reset link":"Sign in"}</button></form>
+<div class="row" style="justify-content:center;margin-top:10px">${tab==="reset"?`<button class="ghost" data-act="authtab" data-v="in">Back to sign in</button>`:`<button class="ghost" data-act="authtab" data-v="reset">Forgot your password?</button>`}</div>
+<div class="or">or</div><button style="width:100%" data-act="guest">Use without an account</button><p class="hint" style="text-align:center">Without an account, your hub is saved in this browser only.</p></div>`;
+  ui.authMsg="";}
+async function doAuth(f){
+  const tab=f.dataset.tab,raw=f.elements.email.value.trim(),err=$("au-err");ui.authEmail=raw;err.textContent="";
+  if(!raw){err.textContent=tab==="reset"?"Enter your email.":"Enter your username or email.";return}
+  const L=toLogin(raw),email=L.email;
+  if(tab==="reset"&&L.isUser){err.textContent="Password reset links only work for accounts made with an email. If you signed up with a username, ask whoever runs this hub to reset your account.";return}
+  if(L.isUser&&!/^[a-z0-9._-]{3,30}$/.test(L.u)){err.textContent="Usernames can use letters, numbers, dots, dashes or underscores, 3 to 30 characters, no spaces.";return}
+  const btn=f.querySelector("button.pri");btn.disabled=true;
+  try{
+    if(tab==="reset"){await auth.sendPasswordResetEmail(email);ui.authTab="in";ui.authMsg="If there's an account for that email, a reset link is on its way. Check your junk folder too.";showAuth();return}
+    const pw=f.elements["au-p"].value;
+    if(tab==="up"){if(pw.length<8){err.textContent="Use a password of at least 8 characters.";btn.disabled=false;return}
+      if(pw!==f.elements["au-p2"].value){err.textContent="The two passwords don't match.";btn.disabled=false;return}
+      await auth.createUserWithEmailAndPassword(email,pw)}
+    else await auth.signInWithEmailAndPassword(email,pw);
+    ui.authTab="in";
+  }catch(e){if(L.isUser&&e.code==="auth/email-already-in-use"){err.textContent="That username is taken. Try another one.";btn.disabled=false;return}
+    if(L.isUser&&/invalid-credential|wrong-password|user-not-found|invalid-login/.test(e.code||"")){err.textContent="That username or password isn't right.";btn.disabled=false;return}
+    err.textContent=AUTH_ERR[e.code]||("Something went wrong ("+(e.code||e.message)+"). Try again.");btn.disabled=false}
+}
+async function signOut(){
+  if(mode==="cloud"&&saveT){clearTimeout(saveT);saveT=null;try{await doc.set(JSON.parse(JSON.stringify(data)))}catch(e){}}
+  try{await writing}catch(e){}
+  if(unsub){unsub();unsub=null}reset();await auth.signOut();toast("Signed out");
+}
+function loadScript(src){return new Promise((res,rej)=>{const el=document.createElement("script");el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el)})}
+async function startFirebase(){
+  $("view").innerHTML='<p class="empty">Loading…</p>';
+  try{const base="https://cdn.jsdelivr.net/npm/firebase@12.7.0/";await loadScript(base+"firebase-app-compat.js");
+    await Promise.all([loadScript(base+"firebase-auth-compat.js"),loadScript(base+"firebase-firestore-compat.js")]);
+    firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();fs=firebase.firestore();
+  }catch(e){startLocal();toast("Sign-in isn't available right now, so your hub is saved in this browser only.");return}
+  auth.onAuthStateChanged(u=>{if(unsub){unsub();unsub=null}clearTimeout(saveT);saveT=null;
+    if(u){try{localStorage.removeItem("ph-guest")}catch(e){}startCloud(u)}
+    else{user=null;if(isGuest())startLocal();else{reset();showAuth()}}});
+}
+function startDb(db){
+  mode="db";doc=db.doc("hub/main");let first=true;
+  const t=setTimeout(()=>{if(first)$("view").innerHTML='<p class="empty">Still trying to reach your saved data. Check your connection.</p>'},10000);
+  doc.onSnapshot(async s=>{
+    if(!s.metadata.fromCache)clearTimeout(t);
+    if(s.metadata.hasPendingWrites&&!first)return;
+    if(!s.exists){if(first&&!s.metadata.fromCache){first=false;
+        try{const old=await db.collection("programs").get();const progs=old.docs.map(d=>Object.assign({id:d.id},JSON.parse(JSON.stringify(d.data()))));data=normalize({programs:progs});if(progs.length&&!readOnly)save(true)}catch(e){data=normalize({})}
+        route()}return}
+    first=false;data=normalize(JSON.parse(JSON.stringify(s.data())));
+    if(document.querySelector("#view form"))return;route();
+  },e=>{clearTimeout(t);if(e&&e.code==="revoked"){readOnly=true;render()}else toast("Lost connection to saved data.")});
+}
+
+/* ---------- theme ---------- */
+function lum(hex){const m=/^#?([\da-f]{6})$/i.exec(hex||"");if(!m)return 0;const n=parseInt(m[1],16);const c=[n>>16,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4});return .2126*c[0]+.7152*c[1]+.0722*c[2]}
+function initials(n){const w=(n||"Program Hub").replace(/[^\p{L}\p{N}\s]/gu,"").trim().split(/\s+/).filter(Boolean);return((w[0]||"P")[0]+(w[1]?w[1][0]:(w[0]||"PH")[1]||"")).toUpperCase()}
+function iconUrl(){if(/^data:image\//.test(data.settings.icon||""))return data.settings.icon;const c=/^#[\da-f]{6}$/i.test(data.settings.color||"")?data.settings.color:"#800000";const ink=lum(c)>.4?"#16161a":"#ffffff";const t=esc(data.settings.iconText||initials(data.settings.name));
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${c}"/><text x="32" y="${t.length>2?40:42}" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="${t.length>2?20:28}" fill="${ink}" text-anchor="middle">${t}</text></svg>`;
+  return"data:image/svg+xml,"+encodeURIComponent(svg)}
+function applyIcon(){const u=iconUrl();$("fav").href=u;$("fav2").href=u;const prev=$("iconprev");if(prev)prev.src=u}
+function applyTheme(){applyIcon();const c=/^#[\da-f]{6}$/i.test(data.settings.color||"")?data.settings.color:"#800000";const r=document.documentElement.style;r.setProperty("--c",c);r.setProperty("--headink",lum(c)>.4?"#16161a":"#fff");
+  $("hubname").textContent=data.settings.name||"Program Hub";document.title=data.settings.name||"Program Hub";
+  $("hubsub").textContent=data.settings.tagline||"Intakes, enrolments, spreadsheets, email drafts and FAQs for every program."}
+
+/* ---------- helpers ---------- */
+const P=()=>data.programs.find(p=>p.id===cur);
+const findI=key=>{const[a,b]=(key||"").split("|");const p=data.programs.find(x=>x.id===a);const i=p&&p.intakes.find(x=>x.id===b);return i?{p,i}:null};
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),2800)}
+async function copyText(text,what){
+  try{await navigator.clipboard.writeText(text);toast(what+" copied");return}catch(e){}
+  const box=$("clipbox");box.textContent=text;if(selCopy(box)){toast(what+" copied");return}
+  toast("Copying is blocked here. Select the text and press Ctrl+C.");
+}
+function selCopy(el){try{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);const ok=document.execCommand("copy");s.removeAllRanges();return ok}catch(e){return false}}
+async function copyRich(html,what){
+  const full='<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'+html.replace(/<p>/g,'<p style="margin:0 0 10px">')
+    .replace(/<table>/g,'<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;border:1px solid #999;margin:0 0 10px">')
+    .replace(/<td(\s|>)/g,'<td style="border:1px solid #999;padding:4px 8px;vertical-align:top"$1').replace(/<th(\s|>)/g,'<th style="border:1px solid #999;padding:4px 8px;vertical-align:top;background:#f2f2f2;text-align:left"$1')+"</div>";
+  try{if(window.ClipboardItem&&navigator.clipboard.write){await navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([full],{type:"text/html"}),"text/plain":new Blob([htmlToText(html)],{type:"text/plain"})})]);toast(what+" copied with formatting");return}}catch(e){}
+  const box=$("clipbox");box.innerHTML=full;if(selCopy(box)){toast(what+" copied with formatting");return}
+  copyText(htmlToText(html),what);
+}
+function cleanUrl(u){u=(u||"").trim();if(!u)return"";if(!/^https?:\/\//i.test(u))u="https://"+u;try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x.href:""}catch(e){return""}}
+function host(u){try{const x=new URL(u);const f=decodeURIComponent(x.pathname.split("/").pop()||"");return x.hostname.replace(/^www\./,"")+(/\.\w{3,4}$/.test(f)?" · "+f:"")}catch(e){return u}}
+const mailto=(to,s,b)=>"mailto:"+encodeURIComponent(to||"").replace(/%40/g,"@").replace(/%2C/g,",")+"?subject="+encodeURIComponent(s||"")+"&body="+encodeURIComponent(b||"");
+function allIntakes(){const out=[];data.programs.forEach(p=>p.intakes.forEach(i=>out.push({p,i,start:startOf(i)})));return out.sort((a,b)=>(a.start||"9").localeCompare(b.start||"9"))}
+function nextIntake(p){const list=p.intakes.map(i=>({i,s:startOf(i)})).sort((a,b)=>(a.s||"9").localeCompare(b.s||"9"));const t=iso(today());return (list.find(x=>x.s>=t)||list[list.length-1]||{}).i}
+function status(i){const s=startOf(i),n=days(s),t=+i.target||0,e=+i.enrolled||0;
+  if(t&&e>=t)return'<span class="pill full">Full</span>';if(n==null)return'<span class="pill">No start date</span>';
+  if(n<0){const e=(i.dates||[]).find(d=>/end|finish|complete|grad/i.test(d.label)&&pd(d.date));return e&&days(e.date)<0?'<span class="pill">Ended</span>':'<span class="pill">Started</span>'}return`<span class="pill">Starts ${away(n)}</span>`}
+function bar(i){const t=+i.target||0,e=+i.enrolled||0;const pct=t?Math.min(100,Math.round(e/t*100)):0;return`<div class="bar" title="${e} of ${t||"?"}"><i style="width:${pct}%"></i></div>`}
+
+/* placeholders */
+function values(key){const f=findI(key);const v={};if(!f)return v;v["program"]=f.p.name;v["intake"]=f.i.name;
+  f.i.dates.forEach(d=>{if(d.label&&pd(d.date))v[d.label.trim().toLowerCase()]=fmt(d.date)});return v}
+const PH=/(\[[^\]\n]{1,60}\])/;
+function fillText(text,key,html){const v=values(key);
+  return String(text||"").split(PH).map(part=>{const m=/^\[([^\]]+)\]$/.exec(part);
+    if(!m)return html?esc(part):part;const k=m[1].trim().toLowerCase();
+    if(k in v)return html?`<mark>${esc(v[k])}</mark>`:v[k];return html?`<mark class="miss">${esc(part)}</mark>`:part}).join("")}
+function fillHtml(h,key,preview){const v=values(key);const box=document.createElement("div");box.innerHTML=sanitize(h);
+  const w=document.createTreeWalker(box,NodeFilter.SHOW_TEXT);const nodes=[];while(w.nextNode())if(PH.test(w.currentNode.nodeValue))nodes.push(w.currentNode);
+  nodes.forEach(n=>{const frag=document.createDocumentFragment();n.nodeValue.split(PH).forEach(part=>{const m=/^\[([^\]]+)\]$/.exec(part);
+    if(!m){frag.appendChild(document.createTextNode(part));return}const k=m[1].trim().toLowerCase();
+    if(k in v){if(preview){const mk=document.createElement("mark");mk.textContent=v[k];frag.appendChild(mk)}else frag.appendChild(document.createTextNode(v[k]))}
+    else if(preview){const mk=document.createElement("mark");mk.className="miss";mk.textContent=part;frag.appendChild(mk)}else frag.appendChild(document.createTextNode(part))});
+    n.parentNode.replaceChild(frag,n)});return box.innerHTML}
+function labelsFor(scope){const s=new Set(["Program","Intake"]);const ps=scope==="admin"?data.programs:data.programs.filter(p=>p.id===scope);
+  ps.forEach(p=>p.intakes.forEach(i=>i.dates.forEach(d=>d.label&&s.add(d.label.trim()))));if(s.size===2)DEF_DATES.forEach(x=>s.add(x));return[...s]}
+
+/* ---------- views ---------- */
+const VIEWS=["overview","programs","admin","faqs","notes","backup"];
+const NAMES={overview:"Overview",programs:"Programs",admin:"Admin drafts",faqs:"FAQs",notes:"Notes",backup:"Settings and backup"};
+const nm=v=>((data.settings.tabNames||{})[v]||"").trim()||NAMES[v];
+function renderNav(){const vis=data.settings.tabs.filter(v=>!data.settings.hidden.includes(v));$("nav").innerHTML=vis.map(v=>`<a href="#${v}" aria-current="${v===view?"page":"false"}">${esc(nm(v))}</a>`).join("")}
+function route(){if(mode==="auth"){showAuth();return}const vis=data.settings.tabs.filter(v=>!data.settings.hidden.includes(v));const h=(location.hash||"").slice(1);view=VIEWS.includes(h)?h:vis[0]||"overview";if(!cur||!P())cur=data.programs[0]?.id||null;applyTheme();render()}
+window.addEventListener("hashchange",()=>{reset();route()});
+function render(){
+  renderNav();
+  const note=mode==="local"&&FB_ON?`<div class="banner">You're using the hub without an account, so it's saved in this browser only. <button class="ghost" data-act="signin" style="min-height:36px;padding:0 6px;text-decoration:underline">Sign in or create an account</button> to keep it on all your devices.</div>`:mode==="local"?`<div class="banner">This hub is yours and is saved in this browser only. Download a backup from <a href="#backup">${esc(nm("backup"))}</a> now and then.</div>`:readOnly?'<div class="banner">View only.</div>':"";
+  $("view").innerHTML=note+({overview:vOverview,programs:vPrograms,admin:vAdmin,faqs:vFaqs,notes:vNotes,backup:vBackup}[view])();
+}
+
+function vOverview(){
+  const o=data.settings.ov,all=allIntakes(),t=iso(today()),lim=iso(new Date(today().getTime()+(+o.range)*864e5));
+  const up=[];data.programs.forEach(p=>{if(o.prog&&p.id!==o.prog)return;p.intakes.forEach(i=>i.dates.forEach(d=>{if(pd(d.date)&&d.date>=t&&d.date<=lim&&(!o.label||d.label.trim().toLowerCase()===o.label))up.push({p,i,d})}))});
+  if(o.notes&&!o.label)data.notes.forEach(n=>{if(!n.done&&pd(n.date)&&n.date<=lim&&(!o.prog||n.prog===o.prog))up.push({note:n,d:{date:n.date,label:n.text}})});
+  up.sort((a,b)=>a.d.date.localeCompare(b.d.date));
+  const labels=[...new Set(data.programs.flatMap(p=>p.intakes.flatMap(i=>i.dates.map(d=>d.label.trim()).filter(Boolean))))].sort();
+  const sel=(id,lab,opts,val)=>`<label class="small" style="margin:0;display:flex;flex-direction:column;gap:2px;flex:1 1 140px">${lab}<select id="${id}" style="font-size:15px">${opts.map(([v,n])=>`<option value="${esc(v)}"${String(v)===String(val)?" selected":""}>${esc(n)}</option>`).join("")}</select></label>`;
+  const filters=`<div class="row" style="background:var(--panel);border-radius:12px;padding:10px 12px;margin-bottom:8px;align-items:flex-end">${sel("ov-range","Time frame",[[7,"Next 7 days"],[14,"Next 2 weeks"],[30,"Next 30 days"],[60,"Next 60 days"],[90,"Next 3 months"],[180,"Next 6 months"],[365,"Next 12 months"]],o.range)}${sel("ov-prog","Program",[["","All programs"]].concat(data.programs.map(p=>[p.id,p.name])),o.prog)}${sel("ov-label","Type of date",[["","All dates"]].concat(labels.map(l=>[l.toLowerCase(),l])),o.label)}${sel("ov-limit","Show",[[10,"10 dates"],[25,"25 dates"],[50,"50 dates"],[9999,"All"]],o.limit)}<label class="small" style="margin:0;display:flex;gap:6px;align-items:center;min-height:44px"><input type="checkbox" id="ov-notes" ${o.notes?"checked":""} style="width:20px;height:20px"> Include my notes</label></div>`;
+  const active=all.filter(x=>!x.start||days(x.start)>=-30),upcoming=all.filter(x=>x.start&&x.start>=t);
+  const enr=upcoming.reduce((s,x)=>s+(+x.i.enrolled||0),0),tgt=upcoming.reduce((s,x)=>s+(+x.i.target||0),0),nxt=upcoming[0];
+  if(!data.programs.length)return`<h2>Welcome to your hub</h2><p>This hub is yours: your own programs, drafts, FAQs and colours. Start by pasting your academic calendar from Excel on the <a href="#backup">${esc(nm("backup"))}</a> page, or add programs one at a time on the <a href="#programs">${esc(nm("programs"))}</a> page.</p>`;
+  let h=`<h2>${esc(nm("overview"))}</h2><div class="stats">
+<div class="stat"><b>${upcoming.length}</b><span>upcoming intakes across ${data.programs.length} programs</span></div>
+<div class="stat"><b>${enr}${tgt?` <small class="mut" style="font-size:.5em">of ${tgt}</small>`:""}</b><span>students enrolled in upcoming intakes</span></div>
+<div class="stat"><b>${nxt?esc(fmt(nxt.start,"short")):"None"}</b><span>${nxt?"next start: "+esc(nxt.p.name):"no upcoming start dates"}</span></div></div>`;
+  h+=`<div class="ov"><div><h3>Upcoming dates <span class="small mut" style="font-weight:400">${up.length} found</span></h3>${filters}`;
+  h+=up.length?`<ul class="dates">`+up.slice(0,+o.limit).map(x=>{const d=pd(x.d.date),n=days(x.d.date);
+    if(x.note){const pn=(data.programs.find(p=>p.id===x.note.prog)||{}).name;return`<li><div class="cal" style="background:var(--fill)"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what"><span class="pill">Note</span> ${esc(x.note.text.split("\n")[0].slice(0,120))} <span class="soon"${n<0?' style="color:var(--bad)"':""}>${n<0?"overdue":away(n)}</span></div><div class="sub">My note${pn?" · "+esc(pn):""} · ${esc(fmt(x.d.date,"nodow"))} · <a href="#notes">open notes</a></div></div></li>`}
+    return`<li><div class="cal"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what">${esc(x.d.label)} <span class="soon">${away(n)}</span></div><div class="sub">${esc(x.p.name)} · ${esc(x.i.name)} · ${esc(fmt(x.d.date,"nodow"))}</div></div></li>`}).join("")+`</ul>`+(up.length>+o.limit?`<p class="hint">Showing ${o.limit} of ${up.length}. Change "Show" to see more.</p>`:""):`<p class="empty">No dates match these filters.</p>`;
+  h+=`</div><div><h3>Enrolment by intake</h3>`;
+  h+=active.length?`<table class="stack"><thead><tr><th>Program and intake</th><th>Starts</th><th>Enrolled</th><th></th><th>Status</th></tr></thead><tbody>`+active.map(x=>`<tr class="click" data-act="goprog" data-id="${x.p.id}"><td><b>${esc(x.p.name)}</b><br><span class="small mut">${esc(x.i.name)}</span></td><td style="white-space:nowrap">${esc(x.start?fmt(x.start,"short"):"—")}</td><td class="num">${+x.i.enrolled||0}${x.i.target?" / "+(+x.i.target):""}</td><td style="width:22%">${bar(x.i)}</td><td>${status(x.i)}</td></tr>`).join("")+`</tbody></table>`:`<p class="empty">No intakes yet.</p>`;
+  return h+`<p class="hint">Click a row to open that program. Update enrolment numbers on each program's page.</p></div></div>`;
+}
+
+function vPrograms(){
+  const list=data.programs.filter(p=>!q||p.name.toLowerCase().includes(q));
+  let h=`<div class="two"><aside class="side"><input id="search" type="search" placeholder="Search programs" aria-label="Search programs" value="${esc(q)}"><ul class="tabs">`+
+    (list.length?list.map(p=>`<li><button class="tab" data-act="open" data-id="${p.id}" aria-current="${p.id===cur}"><span>${esc(p.name)}</span><small>${p.intakes.length} intakes</small></button></li>`).join(""):`<li class="empty">${data.programs.length?"No matches.":"No programs yet."}</li>`)+`</ul>`+
+    (readOnly?"":`<form class="inl" data-form="addprog"><input name="name" placeholder="New program name" aria-label="New program name" autocomplete="off"><button class="pri">Add</button></form><button style="width:100%;margin-top:10px" data-act="bulk">Add dates to many programs</button>`)+`</aside><section>`;
+  if(ui.bulk&&!readOnly)return h+bulkForm()+`</section></div>`;
+  const p=P();
+  if(!p)return h+`<h2>No program selected</h2><p class="mut">Add a program on the left, or paste your calendar on the <a href="#backup">${esc(nm("backup"))}</a> page.</p></section></div>`;
+  const ed=!readOnly;
+  h+=ui.rename?`<form class="inl" data-form="rename"><input name="name" value="${esc(p.name)}" aria-label="Program name" required><button class="pri">Save</button><button type="button" class="ghost" data-act="cancel">Cancel</button></form>`:
+    `<h3 style="margin:0"><span style="font-size:clamp(24px,3vw,32px);line-height:1.1">${esc(p.name)}</span>${ed?`<span class="row"><button class="ghost" data-act="rename">Rename</button>${ui.confirm==="prog"?`<button class="danger" data-act="delprog">Delete program and everything in it</button><button class="ghost" data-act="cancel">Keep</button>`:`<button class="ghost" data-act="ask" data-w="prog">Delete</button>`}</span>`:""}</h3>`;
+  const SN={intakes:"Intakes and dates",files:"Links and files",drafts:"Email drafts"};
+  const secTitle=k=>{const custom=(data.settings.secNames||{})[k];if(ui.secEdit===k&&ed)return`<form class="secname" data-form="secname" data-v="${k}"><input name="n" value="${esc(custom||"")}" placeholder="${SN[k]}" aria-label="Section name"><button class="pri">Save</button><button type="button" class="ghost" data-act="cancel">Cancel</button></form>`;
+    const t=custom||SN[k];return`<span>${esc(t)}${k==="drafts"&&!custom?" for "+esc(p.name):""}${ed?`<button type="button" class="ghost" data-act="secname" data-v="${k}" style="min-height:36px;font-size:14px;font-weight:600;margin-left:4px" title="Rename this section">Rename</button>`:""}</span>`};
+  const mv=k=>ed?`<span class="row" style="gap:0">${ui.edit===`newintake`&&k==="intakes"||ui.edit==="addlink"&&k==="files"||ui.edit==="newdraft"&&k==="drafts"?"":`${k==="intakes"?`<button data-act="newintake">Add intake</button>`:k==="files"?`<button data-act="addlink">Add link</button>`:`<button data-act="newdraft">New draft</button>`}`}<button class="sq ghost" data-act="secmv" data-v="${k}" data-d="-1" aria-label="Move this section up" title="Move section up">↑</button><button class="sq ghost" data-act="secmv" data-v="${k}" data-d="1" aria-label="Move this section down" title="Move section down">↓</button></span>`:"";
+  const S={};
+  S.intakes=`<section class="box"><h3>${secTitle("intakes")}${mv("intakes")}</h3>`+(ui.edit==="newintake"?intakeForm({name:"",target:"",enrolled:"",dates:DEF_DATES.map(l=>({label:l,date:""}))},""):"");
+  const ins=p.intakes.slice().sort((a,b)=>(startOf(a)||"9").localeCompare(startOf(b)||"9"));
+  const endOf=i=>{const e=(i.dates||[]).find(d=>/end|finish|complete|grad/i.test(d.label)&&pd(d.date));return e?e.date:""};
+  const isPast=i=>{const e=endOf(i),st=startOf(i);if(e)return days(e)<0;return st?days(st)<-60:false};
+  const cur_=ins.filter(i=>!isPast(i)),past=ins.filter(isPast);const nxt=nextIntake(p);
+  const isOpen=i=>ui.edit===i.id||openIntakes.has(i.id)||(!closedIntakes.has(i.id)&&nxt&&i.id===nxt.id);
+  const card=i=>ui.edit===i.id?`<div>${intakeForm(i,i.id)}</div>`:`<details class="draft intake" data-iid="${i.id}"${isOpen(i)?" open":""}><summary><span style="flex:1;min-width:0"><span class="st">${esc(i.name)} ${status(i)}</span><span class="ss">${startOf(i)?"Starts "+esc(fmt(startOf(i),"short")):"No start date"} · ${+i.enrolled||0}${i.target?" of "+(+i.target):""} enrolled</span></span><span style="width:110px;flex:none" class="hide-sm">${bar(i)}</span></summary><div class="in">
+<div class="row" style="margin:8px 0">${ed?`<button class="sq" data-act="enr" data-id="${i.id}" data-d="-1" aria-label="One fewer enrolled">−</button>`:""}<span style="flex:1"><b style="font-size:22px">${+i.enrolled||0}</b> <span class="mut">enrolled${i.target?" of "+(+i.target):""}</span>${bar(i)}</span>${ed?`<button class="sq" data-act="enr" data-id="${i.id}" data-d="1" aria-label="One more enrolled">+</button>`:""}</div>
+<dl class="dl">${i.dates.filter(d=>d.label||d.date).map(d=>{const n=days(d.date);return`<dt>${esc(d.label)}</dt><dd class="${n!=null&&n<0?"past":""}">${esc(d.date?fmt(d.date,"short"):"—")}${n!=null&&n>=0&&n<=30?` <span class="soon">${away(n)}</span>`:""}</dd>`}).join("")}</dl>
+${ed?`<div class="row"><button class="ghost" data-act="editintake" data-id="${i.id}">Edit dates</button><button class="ghost" data-act="dupintake" data-id="${i.id}">Copy to new term</button>${ui.confirm==="i"+i.id?`<button class="danger" data-act="delintake" data-id="${i.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="i${i.id}">Delete</button>`}</div>`:""}</div></details>`;
+  const iq=intakeQ.trim().toLowerCase();const match=i=>!iq||(i.name+" "+i.dates.map(d=>d.label+" "+fmt(d.date,"nodow")).join(" ")).toLowerCase().includes(iq);
+  let shown=intakeView==="next"?(nxt&&!isPast(nxt)?[nxt]:[]):intakeView==="all"?ins:intakeView==="past"?past.slice().reverse():intakeView==="open"?cur_.filter(i=>days(startOf(i))!=null&&days(startOf(i))>=0&&!(+i.target&&(+i.enrolled||0)>=+i.target)):intakeView==="full"?ins.filter(i=>+i.target&&(+i.enrolled||0)>=+i.target):cur_;
+  shown=shown.filter(match);
+  const cnt={cur:cur_.length,next:nxt&&!isPast(nxt)?1:0,open:cur_.filter(i=>days(startOf(i))!=null&&days(startOf(i))>=0&&!(+i.target&&(+i.enrolled||0)>=+i.target)).length,full:ins.filter(i=>+i.target&&(+i.enrolled||0)>=+i.target).length,past:past.length,all:ins.length};
+  const filt=ins.length>1?`<div class="row" style="margin:0 0 12px;background:var(--panel);border-radius:12px;padding:8px 10px"><label for="iv" class="small" style="margin:0">Show</label><select id="iv" style="width:auto;flex:1 1 200px">${[["cur","Current and upcoming"],["next","Next intake only"],["open","Upcoming with seats left"],["full","Full"],["past","Past"],["all","All intakes"]].map(([v,n])=>`<option value="${v}"${v===intakeView?" selected":""}>${n} (${cnt[v]})</option>`).join("")}</select><input id="iq" type="search" placeholder="Find an intake or date" aria-label="Find an intake" value="${esc(intakeQ)}" style="flex:1 1 200px;width:auto"></div>`:"";
+  S.intakes+=ins.length?filt+`<div class="drafts">`+(shown.length?shown.map(card).join(""):`<p class="empty">No intakes match. Try "All intakes".</p>`)+`</div>`
+    :`<p class="empty">No intakes yet. Add one for each start date, for example "January 2027".</p>`;
+  S.intakes+=`</section>`;
+  S.files=`<section class="box"><h3>${secTitle("files")}${mv("files")}</h3>`+(p.links.length?`<ul class="files">`+p.links.map((l,k)=>ui.edit==="link"+k?`<li>${linkForm(l,k)}</li>`:`<li class="file"><a class="name" href="${esc(l.url)}" target="_blank" rel="noopener">${linkIcon(l)}<span>${esc(l.label)}<span class="host">${esc(host(l.url))}</span></span></a>${ed?`<button class="ghost" data-act="editlink" data-k="${k}">Edit</button>${ui.confirm==="l"+k?`<button class="danger" data-act="dellink" data-k="${k}">Remove</button>`:`<button class="ghost" data-act="ask" data-w="l${k}">Remove</button>`}`:""}</li>`).join("")+`</ul>`:`<p class="empty">No links yet. Add your SharePoint files, Canva designs, Google files, websites or anything else with a link. In SharePoint, open a file's ⋯ menu and choose Copy link.</p>`)+(ui.edit==="addlink"?linkForm({label:"",url:""},""):"")+`</section>`;
+  S.drafts=`<section class="box"><h3>${secTitle("drafts")}${mv("drafts")}</h3>${draftList(p.drafts,p.id)}</section>`;
+  h+=data.settings.progOrder.map(k=>S[k]).join("");
+  return h+`</section></div>`;
+}
+function vAdmin(){return`<h2>${esc(nm("admin"))}</h2><p class="mut">Emails that aren't tied to one program: staff reminders, office notices, general replies. You can still fill in dates from any intake.</p><section class="box"><h3>Drafts${!readOnly&&ui.edit!=="newdraft"?`<button data-act="newdraft">New draft</button>`:""}</h3>${draftList(data.admin,"admin")}</section>`}
+
+function rte(id,html,ph,scope){
+  return`<div class="rte"><div class="tools" role="toolbar" aria-label="Formatting">
+<button type="button" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button><button type="button" data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button><button type="button" data-cmd="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+<button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button><button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+<button type="button" data-cmd="link" title="Add a link">Link</button><button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button></div>
+<div class="ed" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message" data-ph="${esc(ph)}">${sanitize(html)}</div></div>
+${scope?`<div class="chips"><span class="small mut" style="align-self:center">Insert:</span>${labelsFor(scope).map(l=>`<button type="button" class="chip" data-ins="[${esc(l)}]">[${esc(l)}]</button>`).join("")}</div>`:""}`;
+}
+
+function draftList(list,scope){
+  let h="";if(ui.edit==="newdraft")h+=draftForm({title:"",to:"",subject:"",html:""},scope);
+  const opts=scope==="admin"?[`<option value="">No intake (don't fill dates)</option>`].concat(data.programs.filter(p=>p.intakes.length).map(p=>`<optgroup label="${esc(p.name)}">`+p.intakes.map(i=>`<option value="${p.id}|${i.id}">${esc(p.name)} · ${esc(i.name)}</option>`).join("")+`</optgroup>`)):
+    (()=>{const p=data.programs.find(x=>x.id===scope);return p.intakes.length?p.intakes.slice().sort((a,b)=>(startOf(a)||"9").localeCompare(startOf(b)||"9")).map(i=>`<option value="${p.id}|${i.id}">${esc(i.name)}${startOf(i)?" (starts "+esc(fmt(startOf(i),"short"))+")":""}</option>`):[`<option value="">Add an intake to fill dates</option>`]})();
+  if(!list.length&&ui.edit!=="newdraft")return h+`<p class="empty">No drafts yet. Write [Start date], [Orientation] and other date names in square brackets, and they'll fill in from the intake you pick.</p>`;
+  h+=`<div class="drafts">`+list.map(d=>{
+    if(ui.edit===d.id)return draftForm(d,scope);
+    const key=keyFor(d.id,scope);const sel=opts.join("").replace(`value="${key}"`,`value="${key}" selected`);
+    const bodyPrev=fillHtml(d.html,key,true);const miss=(bodyPrev.match(/class="miss"/g)||[]).length+(fillText(d.subject,key,true).match(/class="miss"/g)||[]).length;
+    return`<details class="draft" data-did="${d.id}"${openDrafts.has(d.id)?" open":""}><summary><span><span class="st">${esc(d.title||"Untitled draft")}</span><span class="ss">${d.subject?fillText(d.subject,key):"(no subject)"}</span></span></summary><div class="in">
+<div class="fillrow"><label for="f-${d.id}" style="margin:0">Fill dates for</label><select id="f-${d.id}" data-fill="${d.id}">${sel}</select></div>
+<p class="subj">${d.to?`<span class="mut">To:</span> ${esc(d.to)}<br>`:""}<span class="mut">Subject:</span> ${fillText(d.subject,key,true)||'<span class="mut">(none)</span>'}</p>
+<div class="body">${bodyPrev||'<span class="mut">(empty)</span>'}</div>
+${miss?`<p class="hint" style="margin:-4px 0 10px;color:var(--bad)">${miss} placeholder${miss>1?"s":""} still to fill in by hand (dashed in red).</p>`:""}
+<div class="row"><button class="pri" data-act="copybody" data-id="${d.id}" data-s="${scope}">Copy message</button><button data-act="copysubj" data-id="${d.id}" data-s="${scope}">Copy subject</button><a class="btn" href="${esc(mailto(d.to,fillText(d.subject,key),htmlToText(fillHtml(d.html,key))))}" target="_blank" rel="noopener" title="Opens a new email. Formatting isn't carried over this way.">Open in Outlook</a>${readOnly?"":`<button class="ghost" data-act="editdraft" data-id="${d.id}">Edit</button><button class="ghost" data-act="dupdraft" data-id="${d.id}" data-s="${scope}">Duplicate</button>${ui.confirm==="d"+d.id?`<button class="danger" data-act="deldraft" data-id="${d.id}" data-s="${scope}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="d${d.id}">Delete</button>`}`}</div></div></details>`}).join("")+`</div>`;
+  return h+`<p class="hint">Click a draft to open it. Copy message keeps bold, lists, tables and links when you paste into Outlook. Open in Outlook starts a new email but sends plain text only, so paste the copied message over it if you need the formatting.</p>`;
+}
+function keyFor(id,scope){let key=fill[id];if(key===undefined||(key&&!findI(key))){if(scope==="admin")return"";const p=data.programs.find(x=>x.id===scope);const n=p&&nextIntake(p);key=n?p.id+"|"+n.id:""}return key}
+
+function intakeForm(i,id){
+  const row=d=>`<div class="drow"><input name="dl" value="${esc(d.label)}" placeholder="e.g. Orientation" aria-label="Date name"><input name="dd" type="date" value="${esc(d.date)}" aria-label="Date"><button type="button" class="sq ghost" data-act="rowmv" data-d="-1" aria-label="Move this date up">↑</button><button type="button" class="sq ghost" data-act="rowmv" data-d="1" aria-label="Move this date down">↓</button><button type="button" class="sq ghost" data-act="rmrow" aria-label="Remove this date">×</button></div>`;
+  return`<form class="form" data-form="intake" data-id="${id}"><div class="grid3"><div><label for="if-n">Intake name</label><input id="if-n" name="name" value="${esc(i.name)}" placeholder="e.g. January 2027" required></div><div><label for="if-t">Target seats</label><input id="if-t" name="target" type="number" min="0" value="${esc(i.target)}"></div><div><label for="if-e">Enrolled</label><input id="if-e" name="enrolled" type="number" min="0" value="${esc(i.enrolled)}"></div></div>
+<label>Dates</label><p class="hint" style="margin:0 0 8px">The date name is what you type in square brackets in your drafts, e.g. [Orientation].</p><div id="drows">${i.dates.map(row).join("")}</div>
+<button type="button" class="ghost" data-act="addrow">+ Add a date</button>
+<div class="row" style="margin-top:12px;background:var(--panel);border-radius:10px;padding:10px"><span class="small"><b>Move every date</b></span><input id="sh-n" type="number" value="0" style="width:90px" aria-label="How many"><select id="sh-u" style="width:auto" aria-label="Unit"><option value="w">weeks</option><option value="m">months</option><option value="d">days</option></select><button type="button" data-act="shift">Apply</button><span class="small mut">Use a negative number to move dates earlier.</span></div>
+<div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save intake</button></div></form>`;
+}
+function linkForm(l,k){const ic=l.icon||"auto";const cc=l.iconColor||"#5e5e66";
+  return`<form class="form" data-form="link" data-k="${k}"><div class="grid2"><div><label for="lf-l">Name</label><input id="lf-l" name="label" value="${esc(l.label)}" placeholder="e.g. January 2027 tracker" required></div><div><label for="lf-u">Link</label><input id="lf-u" name="url" value="${esc(l.url)}" placeholder="Paste any link: SharePoint, Canva, Google, a website…" required></div></div>
+<div class="grid2"><div><label for="lf-i">Icon</label><div class="row" style="flex-wrap:nowrap"><span id="lf-prev">${linkIcon({url:l.url,icon:ic==="auto"?"":ic,iconText:l.iconText,iconColor:cc})}</span><select id="lf-i" name="icon"><option value="auto"${ic==="auto"?" selected":""}>Automatic (matches the link)</option>${Object.entries(ICONS).map(([v,[n]])=>`<option value="${v}"${ic===v?" selected":""}>${n}</option>`).join("")}<option value="custom"${ic==="custom"?" selected":""}>My own letters and colour</option></select></div></div>
+<div id="lf-cust" ${ic==="custom"?"":"hidden"}><label for="lf-t">Letters (up to 3) and colour</label><div class="row" style="flex-wrap:nowrap"><input id="lf-t" name="iconText" maxlength="3" value="${esc(l.iconText||"")}" placeholder="e.g. HR" style="max-width:120px"><input type="color" id="lf-c" name="iconColor" value="${esc(cc)}" aria-label="Icon colour"></div></div></div>
+<div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save link</button></div></form>`}
+function draftForm(d,scope){
+  return`<form class="form" data-form="draft" data-id="${d.id||""}" data-s="${scope}"><div class="grid2"><div><label for="df-t">Draft name</label><input id="df-t" name="title" value="${esc(d.title)}" placeholder="e.g. Welcome email" required></div><div><label for="df-to">To (optional)</label><input id="df-to" name="to" value="${esc(d.to)}" placeholder="e.g. office@college.ca"></div></div><label for="df-s">Subject</label><input id="df-s" name="subject" value="${esc(d.subject)}" placeholder="e.g. Welcome to [Program], starting [Start date]"><label>Message</label>
+${rte("df-b",d.html,"Write or paste your email. Formatting from Outlook or Word is kept.",scope)}
+<p class="hint">Anything else in square brackets, like [Student name], stays as-is and is marked so you remember to fill it in.</p><div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save draft</button></div></form>`}
+
+/* ---------- link icons ---------- */
+const FOLDER='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h5l2 2h8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></svg>';
+const GLOBE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>';
+const PLAY='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+const ICONS={excel:["Excel","X","#1d6f42"],word:["Word","W","#2b579a"],ppt:["PowerPoint","P","#c43e1c"],pdf:["PDF","PDF","#b3261e"],onenote:["OneNote","N","#7719aa"],forms:["Microsoft Forms","F","#038387"],teams:["Teams","T","#4b53bc"],folder:["Folder",FOLDER,"#b07d00"],
+  canva:["Canva","C","#00a3ad"],gdoc:["Google Docs","D","#1a73e8"],gsheet:["Google Sheets","S","#188038"],gslide:["Google Slides","S","#e37400"],gdrive:["Google Drive","G","#5f6368"],gform:["Google Forms","F","#7248b9"],
+  brightspace:["Brightspace","B","#2e4a7d"],video:["Video",PLAY,"#cc0000"],web:["Website",GLOBE,"var(--acc)"]};
+function guessIcon(u){u=(u||"").toLowerCase();
+  if(/\/:x:\/|\.(xlsx|xlsm|xls|csv)(\?|$|#)/.test(u))return"excel";if(/\/:w:\/|\.(docx?|rtf)(\?|$|#)/.test(u))return"word";if(/\/:p:\/|\.(pptx?)(\?|$|#)/.test(u))return"ppt";
+  if(/\/:b:\/|\.pdf(\?|$|#)/.test(u))return"pdf";if(/\/:f:\/|\/forms\/allitems|\/shared%20documents\/?($|\?)/.test(u))return"folder";if(/\/:o:\/|onenote/.test(u))return"onenote";if(/\/:v:\/|youtube\.com|youtu\.be|vimeo\.com|stream\.microsoft/.test(u))return"video";
+  if(/forms\.office\.com|forms\.microsoft\.com/.test(u))return"forms";if(/teams\.microsoft\.com|teams\.live\.com/.test(u))return"teams";if(/canva\.com|canva\.link/.test(u))return"canva";
+  if(/docs\.google\.com\/document/.test(u))return"gdoc";if(/docs\.google\.com\/spreadsheets/.test(u))return"gsheet";if(/docs\.google\.com\/presentation/.test(u))return"gslide";if(/docs\.google\.com\/forms|forms\.gle/.test(u))return"gform";if(/drive\.google\.com/.test(u))return"gdrive";
+  if(/brightspace|d2l/.test(u))return"brightspace";return"web"}
+function linkIcon(l){
+  if(l.icon==="custom"){const c=/^#[\da-f]{6}$/i.test(l.iconColor||"")?l.iconColor:"#5e5e66";const t=(l.iconText||"?").slice(0,3);return`<span class="xl" aria-hidden="true" style="background:${c};color:${lum(c)>.4?"#16161a":"#fff"};font-size:${t.length>2?"11px":"14px"}">${esc(t)}</span>`}
+  const k=ICONS[l.icon]?l.icon:guessIcon(l.url);const[ ,t,c]=ICONS[k];const isSvg=t.startsWith("<svg");
+  return`<span class="xl" aria-hidden="true" style="background:${c};color:${c.startsWith("#")&&lum(c)>.4?"#16161a":c.startsWith("var")?"var(--on)":"#fff"};font-size:${!isSvg&&t.length>2?"10px":"14px"}">${isSvg?t:esc(t)}</span>`}
+
+/* ---------- bulk dates ---------- */
+function bulkForm(){
+  const names=[...new Set(data.programs.flatMap(p=>p.intakes.map(i=>i.name)))].sort();
+  const labels=[...new Set(DEF_DATES.concat(data.programs.flatMap(p=>p.intakes.flatMap(i=>i.dates.map(d=>d.label.trim()).filter(Boolean)))))];
+  const row=`<div class="drow"><input name="dl" list="bk-labels" placeholder="e.g. Orientation" aria-label="Date name"><input name="dd" type="date" aria-label="Date"><button type="button" class="sq ghost" data-act="rowmv" data-d="-1" aria-label="Move this date up">↑</button><button type="button" class="sq ghost" data-act="rowmv" data-d="1" aria-label="Move this date down">↓</button><button type="button" class="sq ghost" data-act="rmrow" aria-label="Remove this date">×</button></div>`;
+  return`<h2>Add dates to many programs</h2><p class="mut">Pick the programs, name the intake, and enter the dates once. They're added to every program you tick. If a program already has an intake with that name, its dates are updated.</p>
+<form class="form" data-form="bulk"><label>Programs</label><div class="row" style="margin-bottom:6px"><button type="button" class="ghost" data-act="bkall">Select all</button><button type="button" class="ghost" data-act="bknone">Clear</button></div>
+<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">${data.programs.map(p=>`<label style="margin:0;font-weight:400;display:flex;gap:8px;align-items:center;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px"><input type="checkbox" name="bp" value="${p.id}" style="width:20px;height:20px"${p.id===cur?" checked":""}> ${esc(p.name)}</label>`).join("")||'<p class="empty">Add some programs first.</p>'}</div>
+<div class="grid2" style="margin-top:6px"><div><label for="bk-n">Intake name</label><input id="bk-n" name="name" list="bk-names" required placeholder="e.g. May 2027"><datalist id="bk-names">${names.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div><div><label for="bk-t">Target seats (optional, same for all)</label><input id="bk-t" name="target" type="number" min="0"></div></div>
+<datalist id="bk-labels">${labels.map(l=>`<option value="${esc(l)}">`).join("")}</datalist>
+<label>Dates</label><div id="drows">${DEF_DATES.map(l=>row.replace('name="dl"',`name="dl" value="${esc(l)}"`)).join("")}</div>
+<button type="button" class="ghost" data-act="addrow">+ Add a date</button>
+<label for="bk-txt" style="margin-top:14px">Or type or paste dates as a list (optional)</label>
+<textarea id="bk-txt" name="txt" style="min-height:110px" placeholder="Start date: May 3, 2027&#10;Orientation: April 29, 2027&#10;Fee deadline - 2027-04-12"></textarea>
+<p class="hint">One date per line: the name, then a colon or dash, then the date. These are added on top of the rows above.</p>
+<div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Add to selected programs</button></div></form>`;
+}
+
+/* ---------- notes ---------- */
+function vNotes(){
+  const list=data.notes.filter(n=>ui.showDone||!n.done).sort((a,b)=>(b.pin?1:0)-(a.pin?1:0)||(a.date||"9").localeCompare(b.date||"9")||(b.created||0)-(a.created||0));
+  const doneCount=data.notes.filter(n=>n.done).length;
+  let h=`<h2>${esc(nm("notes"))}</h2><p class="mut">Reminders and to-dos for yourself. Notes with a date also appear in the Overview's upcoming dates.</p>`;
+  if(!readOnly)h+=ui.edit&&ui.edit.startsWith("n:")?"":noteForm({text:"",date:"",prog:""});
+  h+=`<div class="row" style="margin:14px 0 8px;justify-content:space-between"><b>${list.length} note${list.length===1?"":"s"}</b>${doneCount?`<button class="ghost" data-act="togdone">${ui.showDone?"Hide":"Show"} ${doneCount} done</button>`:""}</div>`;
+  if(!list.length)return h+`<p class="empty">${data.notes.length?"Everything's done.":"No notes yet."}</p>`;
+  return h+`<div class="drafts">`+list.map(n=>{if(ui.edit==="n:"+n.id)return noteForm(n);const pn=(data.programs.find(p=>p.id===n.prog)||{}).name;const dd=days(n.date);
+    return`<article class="draft" style="${n.pin?"border-color:var(--acc);":""}${n.done?"opacity:.6;":""}"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><input type="checkbox" data-done="${n.id}" ${n.done?"checked":""} aria-label="Mark done" style="width:22px;height:22px;flex:none;margin-top:3px"><div style="flex:1"><div style="white-space:pre-wrap;overflow-wrap:anywhere${n.done?";text-decoration:line-through":""}">${esc(n.text)}</div><div class="row small mut" style="margin-top:6px;gap:6px">${n.pin?'<span class="pill full">Pinned</span>':""}${n.date?`<span class="pill"${dd!=null&&dd<0&&!n.done?' style="color:var(--bad)"':""}>${esc(fmt(n.date,"short"))} · ${dd!=null&&dd<0?"overdue":away(dd)}</span>`:""}${pn?`<span class="pill">${esc(pn)}</span>`:""}</div></div></div>
+${readOnly?"":`<div class="row end" style="margin-top:6px"><button class="ghost" data-act="pin" data-id="${n.id}">${n.pin?"Unpin":"Pin"}</button><button class="ghost" data-act="editnote" data-id="${n.id}">Edit</button>${ui.confirm==="n"+n.id?`<button class="danger" data-act="delnote" data-id="${n.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="n${n.id}">Delete</button>`}</div>`}</article>`}).join("")+`</div>`;
+}
+function noteForm(n){
+  return`<form class="form" data-form="note" data-id="${n.id||""}"><label for="nt-t">${n.id?"Edit note":"New note"}</label><textarea id="nt-t" name="text" style="min-height:90px" required placeholder="e.g. Follow up with Maria about missing transcript">${esc(n.text)}</textarea>
+<div class="grid2"><div><label for="nt-d">Date (optional)</label><input id="nt-d" name="date" type="date" value="${esc(n.date)}"></div><div><label for="nt-p">Program (optional)</label><select id="nt-p" name="prog"><option value="">None</option>${data.programs.map(p=>`<option value="${p.id}"${p.id===n.prog?" selected":""}>${esc(p.name)}</option>`).join("")}</select></div></div>
+<div class="row end" style="margin-top:12px">${n.id?`<button type="button" class="ghost" data-act="cancel">Cancel</button>`:""}<button class="pri">${n.id?"Save note":"Add note"}</button></div></form>`}
+
+/* ---------- FAQs ---------- */
+function vFaqs(){
+  const cats=[["","All"],["general","General"]].concat(data.programs.map(p=>[p.id,p.name]));
+  const catName=c=>c==="general"||!c?"General":(data.programs.find(p=>p.id===c)||{}).name||"General";
+  const list=data.faqs.filter(f=>(!fcat||(f.cat||"general")===fcat)&&(!fq||(f.q+" "+htmlToText(f.html)).toLowerCase().includes(fq)));
+  let h=`<h2>${esc(nm("faqs"))}</h2><p class="mut">Answers to the questions students and staff ask most. Search, open, and copy the answer straight into an email.</p>
+<div class="row" style="margin:14px 0"><input id="fsearch" type="search" placeholder="Search questions and answers" aria-label="Search FAQs" value="${esc(fq)}" style="flex:2 1 260px;width:auto"><select id="fcat" aria-label="Filter by program" style="flex:1 1 180px;width:auto">${cats.map(([v,n])=>`<option value="${v}"${v===fcat?" selected":""}>${esc(n)}</option>`).join("")}</select>${readOnly||ui.edit==="newfaq"?"":`<button class="pri" data-act="newfaq">Add FAQ</button>`}</div>`;
+  if(ui.edit==="newfaq")h+=faqForm({q:"",html:"",cat:fcat||"general"});
+  if(!data.faqs.length&&ui.edit!=="newfaq")return h+`<p class="empty">No FAQs yet. Add common questions like "When is the fee deadline?" or "What do I need for my first day?"</p>`;
+  if(!list.length)return h+`<p class="empty">No FAQs match.</p>`;
+  return h+list.map(f=>ui.edit===f.id?faqForm(f):`<details class="faq"${ui.open===f.id?" open":""}><summary><span>${esc(f.q)} <span class="pill" style="margin-left:6px">${esc(catName(f.cat))}</span></span></summary><div class="in"><div class="body" style="max-height:none">${sanitize(f.html)}</div><div class="row"><button class="pri" data-act="copyfaq" data-id="${f.id}">Copy answer</button>${readOnly?"":`<button class="ghost" data-act="editfaq" data-id="${f.id}">Edit</button>${ui.confirm==="f"+f.id?`<button class="danger" data-act="delfaq" data-id="${f.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="f${f.id}" data-open="${f.id}">Delete</button>`}`}</div></div></details>`).join("");
+}
+function faqForm(f){
+  const cats=[["general","General"]].concat(data.programs.map(p=>[p.id,p.name]));
+  return`<form class="form" data-form="faq" data-id="${f.id||""}"><div class="grid2"><div><label for="fq-q">Question</label><input id="fq-q" name="q" value="${esc(f.q)}" required placeholder="e.g. When is the fee deadline?"></div><div><label for="fq-c">Program</label><select id="fq-c" name="cat">${cats.map(([v,n])=>`<option value="${v}"${v===(f.cat||"general")?" selected":""}>${esc(n)}</option>`).join("")}</select></div></div><label>Answer</label>${rte("fq-a",f.html,"Write the answer. Bold, lists and links are kept when you copy it.","")}<div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save FAQ</button></div></form>`}
+
+/* ---------- settings and backup ---------- */
+function vBackup(){
+  const c=data.settings.color||"#800000";
+  return`<h2>${esc(nm("backup"))}</h2>
+${mode==="cloud"&&user?`<section class="box" style="margin-top:12px;border:0;padding:0"><h3>Your account</h3><p>Signed in as <b>${esc(shown(user.email))}</b>. Your hub is saved to your account and stays in sync on every device you sign in on.</p>
+<form data-form="chpw" class="form" style="max-width:520px"><b>Change your password</b><label for="cp-o">Current password</label><input id="cp-o" name="old" type="password" autocomplete="current-password" required><label for="cp-n">New password (at least 8 characters)</label><input id="cp-n" name="nw" type="password" autocomplete="new-password" required minlength="8"><p class="err" id="cp-err" style="color:var(--bad);font-size:15px;margin:8px 0 0"></p><div class="row" style="margin-top:10px"><button class="pri">Change password</button></div></form>
+<div class="row">${isUserAcct(user.email)?"":`<button data-act="pwreset">Email me a password reset link</button>`}<button class="ghost" data-act="signout">Sign out</button></div>
+${isUserAcct(user.email)?`<p class="hint">You signed in with a username, so keep your password somewhere safe. It can't be reset by email.</p>`:""}</section>`:""}
+<section class="box" style="${mode==="cloud"?"":"margin-top:12px;border:0;padding:0"}"><h3>Make it yours</h3>
+<form data-form="settings"><div class="grid2"><div><label for="st-n">Hub name</label><input id="st-n" name="name" value="${esc(data.settings.name||"")}" placeholder="Program Hub"></div><div><label for="st-t">Line under the name</label><input id="st-t" name="tagline" value="${esc(data.settings.tagline||"")}" placeholder="Intakes, enrolments, spreadsheets, email drafts and FAQs for every program."></div></div>
+<label>Colour</label><div class="swatches">${THEMES.map(([n,v])=>`<button type="button" class="sw" style="background:${v}" data-act="color" data-v="${v}" aria-label="${n}" title="${n}" aria-pressed="${v.toLowerCase()===c.toLowerCase()}"></button>`).join("")}<span class="row"><input type="color" id="st-c" value="${esc(c)}" aria-label="Pick any colour"><span class="small mut">or pick any colour</span></span></div>
+<label>Browser tab icon</label><div class="row" style="align-items:center;gap:14px"><img id="iconprev" src="${iconUrl()}" alt="Current tab icon" width="56" height="56" style="border-radius:12px;border:1.5px solid var(--line);background:var(--panel);object-fit:cover">
+<div style="flex:1 1 260px"><label for="st-it" style="margin-top:0">Letters on the icon</label><input id="st-it" name="iconText" maxlength="3" value="${esc(data.settings.iconText||"")}" placeholder="${esc(initials(data.settings.name))} (from your hub name)" style="max-width:240px"></div></div>
+<div class="row" style="margin-top:8px"><label class="btn" for="st-iu" style="margin:0;cursor:pointer">Upload your own image</label><input type="file" id="st-iu" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0">${/^data:image\//.test(data.settings.icon||"")?`<button type="button" class="ghost" data-act="iconclear">Use letters instead</button>`:""}<span class="small mut">A square logo or picture works best. It's shrunk to icon size.</span></div>
+<label for="dstyle">Date style in emails</label><select id="dstyle" name="dateStyle" style="width:auto">${[["long","Monday, January 11, 2027"],["nodow","January 11, 2027"],["short","Jan 11, 2027"]].map(([v,n])=>`<option value="${v}"${v===data.dateStyle?" selected":""}>${n}</option>`).join("")}</select>
+<div class="row" style="margin-top:12px"><button class="pri"${readOnly?" disabled":""}>Save settings</button></div></form></section>
+<section class="box"><h3>Arrange and rename tabs</h3><p class="mut" style="margin-top:-6px">Type a new name for any tab (leave it blank to keep the original), move tabs up or down, and untick any you don't use. The first tab is the one that opens when you visit.</p>
+<ol style="list-style:none;padding:0;margin:0;display:grid;gap:6px;max-width:520px">${data.settings.tabs.map((v,k,arr)=>`<li class="row" style="border:1.5px solid var(--line);border-radius:10px;padding:4px 6px 4px 12px;flex-wrap:nowrap"><input type="checkbox" data-tabshow="${v}" ${data.settings.hidden.includes(v)?"":"checked"} ${v==="backup"?"disabled":""} style="width:20px;height:20px;flex:none" aria-label="Show ${esc(nm(v))} tab"><input data-tabname="${v}" value="${esc((data.settings.tabNames||{})[v]||"")}" placeholder="${NAMES[v]}" aria-label="Name for the ${NAMES[v]} tab" style="flex:1;width:auto"><button type="button" class="sq ghost" data-act="tabmv" data-v="${v}" data-d="-1" aria-label="Move ${esc(nm(v))} up" ${k===0?"disabled":""}>↑</button><button type="button" class="sq ghost" data-act="tabmv" data-v="${v}" data-d="1" aria-label="Move ${esc(nm(v))} down" ${k===arr.length-1?"disabled":""}>↓</button></li>`).join("")}</ol>
+<p class="hint">The ${esc(nm("backup"))} tab always stays visible so you can't lock yourself out.</p></section>
+<section class="box"><h3>Paste your academic calendar</h3>
+<p>Copy the rows from Excel, including the header row, and paste them below. The first column is the program and the second is the intake name. Every other column with dates becomes a date for that intake, named after its column header. Columns named <b>Target</b> or <b>Enrolled</b> fill in the numbers. If an intake with the same name already exists, its dates are updated.</p>
+<div class="body" style="max-height:none;white-space:pre;overflow-x:auto;font-size:13px">Program	Intake	Start date	End date	Orientation	Application deadline	Target
+Personal Support Worker	January 2027	2027-01-11	2027-08-27	2027-01-07	2026-12-11	30</div>
+<p class="small mut" style="margin-top:-4px">Example only. Use your real calendar.</p>
+<label for="imp">Paste here</label><textarea id="imp" placeholder="Paste rows from Excel"></textarea>
+<div class="row" style="margin-top:10px"><label for="dorder" style="margin:0">Dates like 03/04/2027 mean</label><select id="dorder" style="width:auto"><option value="mdy">March 4 (MM/DD/YYYY)</option><option value="dmy">3 April (DD/MM/YYYY)</option></select><button class="pri" data-act="import" ${readOnly?"disabled":""}>Import calendar</button></div>
+<p id="impmsg" class="hint"></p></section>
+<section class="box"><h3>Back up everything</h3><p>Saves all your programs, intakes, links, drafts, FAQs and settings as one file. Keep a copy on OneDrive. You can also use it to move your hub to another computer.</p>
+<div class="row"><button class="pri" data-act="export">Download backup</button><button data-act="copyjson">Copy backup text</button></div></section>
+<section class="box"><h3>Restore from a backup</h3><p>This replaces everything in this hub with the backup.</p>
+<input type="file" id="restfile" accept=".json,application/json" style="width:auto"><p id="restmsg" class="hint"></p></section>`;
+}
+
+/* ---------- import / export ---------- */
+function parseDate(s,order){s=(s||"").trim();if(!s)return"";let m;
+  if(m=/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(s))return mk(+m[1],+m[2],+m[3]);
+  if(m=/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/.exec(s)){let a=+m[1],b=+m[2],y=+m[3];if(y<100)y+=2000;
+    if(a>12)return mk(y,b,a);if(b>12)return mk(y,a,b);return order==="dmy"?mk(y,b,a):mk(y,a,b)}
+  const d=new Date(s.replace(/(\d)(st|nd|rd|th)\b/,"$1"));return isNaN(d)?null:iso(d);
+  function mk(y,mo,da){const d=new Date(y,mo-1,da);return d.getMonth()===mo-1?iso(d):null}}
+function doImport(){
+  const txt=$("imp").value.replace(/\r/g,"").trim();const msg=$("impmsg");
+  if(!txt){msg.textContent="Paste your calendar first.";return}
+  const rows=txt.split("\n").map(r=>r.split(r.includes("\t")?"\t":",").map(c=>c.trim().replace(/^"|"$/g,"")));
+  const head=rows.shift();if(head.length<3){msg.textContent="I need at least three columns: Program, Intake and one date.";return}
+  const order=$("dorder").value;let nP=0,nI=0,bad=0;
+  rows.filter(r=>r.some(c=>c)).forEach(r=>{const pn=r[0],inn=r[1]||"Intake";if(!pn)return;
+    let p=data.programs.find(x=>x.name.toLowerCase()===pn.toLowerCase());if(!p){p={id:uid(),name:pn,links:[],drafts:[],intakes:[]};data.programs.push(p);nP++}
+    let i=p.intakes.find(x=>x.name.toLowerCase()===inn.toLowerCase());if(!i){i={id:uid(),name:inn,target:"",enrolled:"",dates:[]};p.intakes.push(i);nI++}
+    head.slice(2).forEach((h,k)=>{const v=r[k+2]||"",hl=h.trim();if(!hl)return;
+      if(/^target/i.test(hl)){if(v!=="")i.target=String(parseInt(v)||0);return}
+      if(/^enrol/i.test(hl)){if(v!=="")i.enrolled=String(parseInt(v)||0);return}
+      if(!v)return;const d=parseDate(v,order);if(!d){bad++;return}
+      const ex=i.dates.find(x=>x.label.toLowerCase()===hl.toLowerCase());if(ex)ex.date=d;else i.dates.push({label:hl,date:d})})});
+  normalize(data);save(true);cur=cur||data.programs[0]?.id;render();
+  $("impmsg").textContent=`Done: ${nP} new program${nP===1?"":"s"}, ${nI} new intake${nI===1?"":"s"}${bad?`, ${bad} date${bad>1?"s":""} I couldn't read (left blank)`:""}.`;toast("Calendar imported");
+}
+async function doExport(){
+  const text=JSON.stringify(data,null,2),name=(data.settings.name||"program-hub").replace(/[^\w-]+/g,"-").toLowerCase()+"-backup-"+iso(today())+".json";
+  try{if(window.claude&&window.claude.use){const dl=await window.claude.use("downloads");if(dl){await dl.save({filename:name,data:text});toast("Backup saved");return}}}catch(e){}
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast("Backup downloaded")}catch(e){copyText(text,"Backup text")}
+}
+
+/* ---------- events ---------- */
+document.addEventListener("input",e=>{const t=e.target;
+  if(t.id==="iq"){intakeQ=t.value;const pos=t.selectionStart;render();const x=$("iq");if(x){x.focus();x.setSelectionRange(pos,pos)}return}
+  if(t.id==="search"||t.id==="fsearch"){const v=t.value.trim().toLowerCase();if(t.id==="search")q=v;else fq=v;const pos=t.selectionStart,id=t.id;render();const s=$(id);s.focus();s.setSelectionRange(pos,pos)}
+  if(t.id==="st-it"&&!/^data:image\//.test(data.settings.icon||"")){const keep=data.settings.iconText;data.settings.iconText=t.value.toUpperCase();applyIcon();data.settings.iconText=keep}
+  if((t.id==="lf-u"||t.id==="lf-t")&&$("lf-i")){const ic=$("lf-i").value;$("lf-prev").innerHTML=linkIcon({url:$("lf-u").value,icon:ic==="auto"?"":ic,iconText:$("lf-t").value.toUpperCase(),iconColor:$("lf-c").value})}
+  if(t.id==="st-c"){document.documentElement.style.setProperty("--c",t.value);document.documentElement.style.setProperty("--headink",lum(t.value)>.4?"#16161a":"#fff")}});
+document.addEventListener("change",e=>{const t=e.target;
+  if(t.dataset.fill){fill[t.dataset.fill]=t.value;render();return}
+  if(t.id==="range"){range=+t.value;render();return}
+  if(t.id==="iv"){intakeView=t.value;render();return}
+  if(t.id==="fcat"){fcat=t.value;render();return}
+  if(/^ov-/.test(t.id)){const o=data.settings.ov,k=t.id.slice(3);o[k]=k==="notes"?t.checked:(k==="range"||k==="limit")?+t.value:t.value;if(!readOnly)save();render();return}
+  if(t.dataset.tabname!==undefined&&t.matches("[data-tabname]")){if(readOnly)return;data.settings.tabNames[t.dataset.tabname]=t.value.trim();save();renderNav();toast("Tab name saved");return}
+  if(t.id==="st-iu"&&t.files[0]){if(readOnly)return;const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=c.height=128;const x=c.getContext("2d");const m=Math.min(img.width,img.height);x.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,128,128);data.settings.icon=c.toDataURL("image/png");save(true);applyIcon();render();toast("Tab icon updated")};img.onerror=()=>toast("That file isn't an image I can read.");img.src=r.result};r.readAsDataURL(t.files[0]);return}
+  if(t.id==="lf-i"||t.id==="lf-c"){const ic=$("lf-i").value;$("lf-cust").hidden=ic!=="custom";$("lf-prev").innerHTML=linkIcon({url:$("lf-u").value,icon:ic==="auto"?"":ic,iconText:$("lf-t").value.toUpperCase(),iconColor:$("lf-c").value});return}
+  if(t.dataset.tabshow){if(readOnly)return;const h=data.settings.hidden,v=t.dataset.tabshow;if(t.checked)data.settings.hidden=h.filter(x=>x!==v);else if(!h.includes(v))h.push(v);save();render();return}
+  if(t.dataset.done){if(readOnly)return;const n=data.notes.find(x=>x.id===t.dataset.done);if(n){n.done=t.checked;save();render();toast(n.done?"Marked done":"Marked not done")}return}
+  if(t.id==="restfile"&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.programs))throw 0;data=normalize(d);cur=null;save(true);route();toast("Backup restored")}catch(x){$("restmsg").textContent="That file isn't a Program Hub backup."}};r.readAsText(t.files[0])}});
+/* keep the editor's selection when toolbar or insert buttons are pressed */
+document.addEventListener("mousedown",e=>{if(e.target.closest(".tools button,[data-ins]"))e.preventDefault()});
+document.addEventListener("paste",e=>{const ed=e.target.closest&&e.target.closest(".ed");if(!ed)return;e.preventDefault();
+  const h=e.clipboardData.getData("text/html"),t=e.clipboardData.getData("text/plain");
+  document.execCommand("insertHTML",false,h?sanitize(h.replace(/^[\s\S]*<!--StartFragment-->|<!--EndFragment-->[\s\S]*$/g,"")):textToHtml(t))});
+document.addEventListener("click",e=>{
+  const cmd=e.target.closest("[data-cmd]");
+  if(cmd){const ed=cmd.closest(".rte").querySelector(".ed");if(!ed.contains(getSelection().anchorNode))ed.focus();
+    if(cmd.dataset.cmd==="link"){const s=getSelection();if(!s.toString()){toast("Select the words to turn into a link first.");return}ui.linkRange=s.getRangeAt(0).cloneRange();
+      const box=document.createElement("div");box.className="row";box.style.margin="8px";box.innerHTML='<input id="lnk-u" placeholder="Paste the web address" style="flex:1;width:auto" aria-label="Link address"><button type="button" class="pri" data-act="lnkok">Add link</button><button type="button" class="ghost" data-act="lnkno">Cancel</button>';
+      cmd.closest(".tools").after(box);$("lnk-u").focus();return}
+    document.execCommand(cmd.dataset.cmd,false,null);return}
+  const ins=e.target.closest("[data-ins]");
+  if(ins){const ed=$("df-b");if(!ed.contains(getSelection().anchorNode)){ed.focus();const r=document.createRange();r.selectNodeContents(ed);r.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(r)}document.execCommand("insertText",false,ins.dataset.ins);return}
+  const b=e.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;
+  if(a==="authtab"){const em=$("au-e");if(em)ui.authEmail=em.value.trim();ui.authTab=b.dataset.v;showAuth();$("au-e")?.focus();return}
+  if(a==="showpw"){const i=$(b.dataset.for);i.type=i.type==="password"?"text":"password";b.textContent=i.type==="password"?"Show":"Hide";return}
+  if(a==="guest"){try{localStorage.setItem("ph-guest","1")}catch(e){}reset();startLocal();return}
+  if(a==="signin"){try{localStorage.removeItem("ph-guest")}catch(e){}reset();ui.authTab="in";showAuth();return}
+  if(a==="signout"){signOut();return}
+  if(a==="pwreset"&&user){auth.sendPasswordResetEmail(user.email).then(()=>toast("Reset link sent to "+user.email)).catch(()=>toast("Couldn't send the link. Try again later."));return}
+  if(a==="lnkok"||a==="lnkno"){const u=a==="lnkok"?cleanUrl($("lnk-u").value):"";const box=b.closest(".row");const ed=box.parentElement.querySelector(".ed");box.remove();
+    if(u&&ui.linkRange){ed.focus();const s=getSelection();s.removeAllRanges();s.addRange(ui.linkRange);document.execCommand("createLink",false,u)}else if(a==="lnkok")toast("That address doesn't look right.");ui.linkRange=null;return}
+  if(a==="goprog"){cur=b.dataset.id;reset();location.hash="programs";return}
+  if(a==="open"){cur=b.dataset.id;reset();render();return}
+  if(a==="cancel"){reset();render();return}
+  const list=s=>s==="admin"?data.admin:(data.programs.find(p=>p.id===s)||{}).drafts||[];
+  const dr=b.dataset.s?list(b.dataset.s).find(x=>x.id===b.dataset.id):null;
+  if(dr){const key=keyFor(dr.id,b.dataset.s);
+    if(a==="copysubj")return copyText(fillText(dr.subject,key),"Subject");
+    if(a==="copybody")return copyRich(fillHtml(dr.html,key),"Message")}
+  if(a==="copyfaq"){const f=data.faqs.find(x=>x.id===b.dataset.id);if(f)copyRich(sanitize(f.html),"Answer");return}
+  if(a==="copyjson")return copyText(JSON.stringify(data,null,2),"Backup text");
+  if(a==="export")return doExport();
+  if(readOnly)return;
+  if(a==="color"){$("st-c").value=b.dataset.v;document.querySelectorAll(".sw").forEach(s=>s.setAttribute("aria-pressed",s===b));document.documentElement.style.setProperty("--c",b.dataset.v);document.documentElement.style.setProperty("--headink",lum(b.dataset.v)>.4?"#16161a":"#fff");return}
+  if(a==="import")return doImport();
+  if(a==="addrow"){const tpl=document.createElement("div");tpl.innerHTML=`<div class="drow"><input name="dl" placeholder="e.g. Orientation" aria-label="Date name"><input name="dd" type="date" aria-label="Date"><button type="button" class="sq ghost" data-act="rowmv" data-d="-1" aria-label="Move this date up">↑</button><button type="button" class="sq ghost" data-act="rowmv" data-d="1" aria-label="Move this date down">↓</button><button type="button" class="sq ghost" data-act="rmrow" aria-label="Remove this date">×</button></div>`;$("drows").appendChild(tpl.firstChild);$("drows").lastChild.querySelector("input").focus();return}
+  if(a==="rmrow"){b.closest(".drow").remove();return}
+  if(a==="shift"){const n=parseInt($("sh-n").value)||0,u=$("sh-u").value;if(!n)return;
+    document.querySelectorAll('#drows input[name=dd]').forEach(inp=>{const d=pd(inp.value);if(!d)return;
+      if(u==="m"){const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);d.setDate(Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()))}else d.setDate(d.getDate()+n*(u==="w"?7:1));inp.value=iso(d)});
+    toast("Dates moved. Check them, then Save intake.");return}
+  if(a==="ask"){ui.confirm=b.dataset.w;if(b.dataset.open)ui.open=b.dataset.open;render();return}
+  if(a==="newdraft"){reset();ui.edit="newdraft";render();$("df-t")?.focus();return}
+  if(a==="editdraft"){reset();ui.edit=b.dataset.id;render();$("df-t")?.focus();return}
+  if(a==="dupdraft"&&dr){list(b.dataset.s).push(Object.assign({},dr,{id:uid(),title:(dr.title||"Draft")+" (copy)"}));reset();save();render();return}
+  if(a==="deldraft"){const l=list(b.dataset.s);const k=l.findIndex(x=>x.id===b.dataset.id);if(k>-1)l.splice(k,1);reset();save();render();return}
+  if(a==="newfaq"){reset();ui.edit="newfaq";render();$("fq-q")?.focus();return}
+  if(a==="editfaq"){reset();ui.edit=b.dataset.id;render();$("fq-q")?.focus();return}
+  if(a==="iconclear"){delete data.settings.icon;save(true);applyIcon();render();toast("Using letters for the icon");return}
+  if(a==="togpast"){showPastI=!showPastI;render();return}
+  if(a==="secname"){reset();ui.secEdit=b.dataset.v;render();document.querySelector("[data-form=secname] input")?.focus();return}
+  if(a==="secmv"){const t=data.settings.progOrder,k=t.indexOf(b.dataset.v),j=k+(+b.dataset.d);if(k<0||j<0||j>=t.length){toast("Already at the "+(j<0?"top":"bottom")+".");return}[t[k],t[j]]=[t[j],t[k]];save();render();return}
+  if(a==="drmv"){const l=list(b.dataset.s),k=l.findIndex(x=>x.id===b.dataset.id),j=k+(+b.dataset.d);if(k<0||j<0||j>=l.length)return;[l[k],l[j]]=[l[j],l[k]];save();render();return}
+  if(a==="rowmv"){const r=b.closest(".drow"),sib=+b.dataset.d<0?r.previousElementSibling:r.nextElementSibling;if(!sib)return;if(+b.dataset.d<0)sib.before(r);else sib.after(r);b.focus();return}
+  if(a==="tabmv"){const t=data.settings.tabs,k=t.indexOf(b.dataset.v),j=k+(+b.dataset.d);if(k<0||j<0||j>=t.length)return;[t[k],t[j]]=[t[j],t[k]];save();render();toast("Tab order saved");return}
+  if(a==="bulk"){reset();ui.bulk=true;render();return}
+  if(a==="bkall"||a==="bknone"){document.querySelectorAll("input[name=bp]").forEach(c=>c.checked=a==="bkall");return}
+  if(a==="togdone"){ui.showDone=!ui.showDone;render();return}
+  if(a==="pin"){const n=data.notes.find(x=>x.id===b.dataset.id);if(n){n.pin=!n.pin;save();render()}return}
+  if(a==="editnote"){const sd=ui.showDone;reset();ui.showDone=sd;ui.edit="n:"+b.dataset.id;render();$("nt-t")?.focus();return}
+  if(a==="delnote"){data.notes=data.notes.filter(x=>x.id!==b.dataset.id);const sd=ui.showDone;reset();ui.showDone=sd;save();render();return}
+  if(a==="delfaq"){data.faqs=data.faqs.filter(x=>x.id!==b.dataset.id);reset();save();render();return}
+  const p=P();if(!p)return;
+  if(a==="rename"){reset();ui.rename=true;render();return}
+  if(a==="delprog"){data.programs=data.programs.filter(x=>x.id!==p.id);cur=data.programs[0]?.id||null;reset();save(true);render();toast("Program deleted");return}
+  if(a==="newintake"){reset();ui.edit="newintake";render();$("if-n")?.focus();return}
+  if(a==="editintake"){reset();ui.edit=b.dataset.id;render();$("if-n")?.focus();return}
+  if(a==="dupintake"){const i=p.intakes.find(x=>x.id===b.dataset.id);if(!i)return;const c=JSON.parse(JSON.stringify(i));c.id=uid();c.name=i.name+" (new term)";c.enrolled="";p.intakes.push(c);reset();ui.edit=c.id;save();render();$("if-n")?.focus();toast("Copied. Rename it and move the dates.");return}
+  if(a==="delintake"){p.intakes=p.intakes.filter(x=>x.id!==b.dataset.id);reset();save();render();return}
+  if(a==="enr"){const i=p.intakes.find(x=>x.id===b.dataset.id);if(!i)return;i.enrolled=String(Math.max(0,(+i.enrolled||0)+(+b.dataset.d)));save();render();return}
+  if(a==="addlink"){reset();ui.edit="addlink";render();$("lf-l")?.focus();return}
+  if(a==="editlink"){reset();ui.edit="link"+b.dataset.k;render();$("lf-l")?.focus();return}
+  if(a==="lkmv"){const k=+b.dataset.k,j=k+(+b.dataset.d);if(j<0||j>=p.links.length)return;[p.links[k],p.links[j]]=[p.links[j],p.links[k]];save();render();return}
+  if(a==="dellink"){p.links.splice(+b.dataset.k,1);reset();save();render();return}
+});
+document.addEventListener("toggle",e=>{const t=e.target;if(t.matches&&t.matches("details[data-iid]")){const id=t.dataset.iid;if(t.open){openIntakes.add(id);closedIntakes.delete(id)}else{openIntakes.delete(id);closedIntakes.add(id)}return}if(t.matches&&t.matches("details.draft[data-did]")){if(t.open)openDrafts.add(t.dataset.did);else openDrafts.delete(t.dataset.did)}},true);
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="lnk-u"){e.preventDefault();e.target.parentElement.querySelector("[data-act=lnkok]").click()}});
+document.addEventListener("submit",e=>{
+  const f=e.target.closest("[data-form]");if(!f)return;e.preventDefault();
+  if(f.dataset.form==="auth"){doAuth(f);return}
+  if(f.dataset.form==="secname"&&!readOnly){data.settings.secNames=data.settings.secNames||{};data.settings.secNames[f.dataset.v]=f.elements.n.value.trim();reset();save();render();toast("Section renamed");return}
+  if(f.dataset.form==="chpw"){const o=f.elements.old.value,n=f.elements.nw.value,er=$("cp-err");er.textContent="";
+    if(n.length<8){er.textContent="Use at least 8 characters for the new password.";return}
+    const u=auth.currentUser;if(!u)return;
+    u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email,o)).then(()=>u.updatePassword(n)).then(()=>{f.reset();toast("Password changed")})
+      .catch(e=>{er.textContent=/invalid-credential|wrong-password|invalid-login/.test(e.code||"")?"Your current password isn't right.":e.code==="auth/too-many-requests"?"Too many tries. Wait a few minutes.":"Couldn't change it ("+(e.code||"error")+")."});return}
+  if(readOnly)return;
+  const v=n=>(f.elements[n]&&f.elements[n].value||"").trim(),k=f.dataset.form;
+  if(k==="settings"){data.settings.name=v("name");data.settings.tagline=v("tagline");data.settings.color=$("st-c").value;data.settings.iconText=v("iconText").toUpperCase();data.dateStyle=v("dateStyle")||"long";save(true);applyTheme();render();toast("Settings saved");return}
+  if(k==="addprog"){const n=v("name");if(!n)return;if(data.programs.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast("That program already exists.");return}
+    const p={id:uid(),name:n,links:[],drafts:[],intakes:[]};data.programs.push(p);normalize(data);cur=p.id;reset();save(true);render();return}
+  if(k==="draft"){const body={title:v("title"),to:v("to"),subject:v("subject"),html:sanitize($("df-b").innerHTML)};
+    const l=f.dataset.s==="admin"?data.admin:data.programs.find(p=>p.id===f.dataset.s).drafts;
+    const id=f.dataset.id;if(id){const x=l.find(x=>x.id===id);if(x){Object.assign(x,body);delete x.body}openDrafts.add(id)}else{const nid=uid();l.push(Object.assign({id:nid},body));openDrafts.add(nid)}
+    reset();save(true);render();toast("Draft saved");return}
+  if(k==="note"){const body={text:f.elements.text.value.trim(),date:v("date"),prog:v("prog")};if(!body.text)return;const id=f.dataset.id;
+    if(id)Object.assign(data.notes.find(x=>x.id===id)||{},body);else data.notes.push(Object.assign({id:uid(),created:Date.now(),done:false,pin:false},body));
+    const sd=ui.showDone;reset();ui.showDone=sd;save(true);render();toast(id?"Note saved":"Note added");return}
+  if(k==="bulk"){
+    const ids=[...f.querySelectorAll("input[name=bp]:checked")].map(c=>c.value);if(!ids.length){toast("Tick at least one program.");return}
+    const name=v("name");if(!name){toast("Give the intake a name.");return}
+    const ls=[...f.querySelectorAll("#drows input[name=dl]")],ds=[...f.querySelectorAll("#drows input[name=dd]")];
+    const dates=ls.map((l,j)=>({label:l.value.trim(),date:ds[j].value})).filter(d=>d.label&&d.date);let bad=0;
+    v("txt").split("\n").forEach(line=>{line=line.trim();if(!line)return;const m=/^(.+?)\s*(?::|\s[-–—]\s|\t)\s*(.+)$/.exec(line);if(!m){bad++;return}const d=parseDate(m[2],"mdy");if(!d){bad++;return}
+      const ex=dates.find(x=>x.label.toLowerCase()===m[1].trim().toLowerCase());if(ex)ex.date=d;else dates.push({label:m[1].trim(),date:d})});
+    if(!dates.length){toast(bad?"I couldn't read those dates. Try a format like May 3, 2027.":"Enter at least one date.");return}
+    let made=0,upd=0;const tg=v("target");
+    ids.forEach(id=>{const p=data.programs.find(x=>x.id===id);if(!p)return;let i=p.intakes.find(x=>x.name.toLowerCase()===name.toLowerCase());
+      if(!i){i={id:uid(),name,target:tg,enrolled:"",dates:[]};p.intakes.push(i);made++}else{upd++;if(tg)i.target=tg}
+      dates.forEach(d=>{const ex=i.dates.find(x=>x.label.toLowerCase()===d.label.toLowerCase());if(ex)ex.date=d.date;else i.dates.push({label:d.label,date:d.date})})});
+    reset();save(true);render();toast(`Dates added to ${ids.length} program${ids.length>1?"s":""}${made?` (${made} new intake${made>1?"s":""})`:""}${bad?`. ${bad} line${bad>1?"s":""} skipped`:""}`);return}
+  if(k==="faq"){const body={q:v("q"),cat:v("cat")||"general",html:sanitize($("fq-a").innerHTML)};const id=f.dataset.id;
+    if(id){const x=data.faqs.find(x=>x.id===id);if(x){Object.assign(x,body);delete x.answer}}else data.faqs.unshift(Object.assign({id:uid()},body));
+    reset();ui.open=id||data.faqs[0].id;save(true);render();toast("FAQ saved");return}
+  const p=P();if(!p)return;
+  if(k==="rename"){const n=v("name");if(n)p.name=n;normalize(data)}
+  if(k==="link"){const url=cleanUrl(v("url"));if(!url){toast("That link doesn't look right. Paste the full address.");return}
+    const ic=v("icon")||"auto";const l={label:v("label")||"Untitled link",url,icon:ic==="auto"?"":ic};if(ic==="custom"){l.iconText=v("iconText").toUpperCase()||"?";l.iconColor=v("iconColor")}if(f.dataset.k==="")p.links.push(l);else p.links[+f.dataset.k]=l}
+  if(k==="intake"){const ls=[...f.querySelectorAll("input[name=dl]")],ds=[...f.querySelectorAll("input[name=dd]")];
+    const dates=ls.map((l,j)=>({label:l.value.trim(),date:ds[j].value})).filter(d=>d.label||d.date);
+    const body={name:v("name")||"Intake",target:v("target"),enrolled:v("enrolled"),dates};
+    if(f.dataset.id)Object.assign(p.intakes.find(x=>x.id===f.dataset.id)||{},body);else p.intakes.push(Object.assign({id:uid()},body))}
+  reset();save(true);render();toast("Saved");
+});
+if(window.claude&&typeof window.claude.use==="function"){window.claude.use("db").then(db=>db?startDb(db):startLocal()).catch(startLocal)}
+else if(FB_ON)startFirebase();else startLocal();
+}
+</script>
+</body>
+</html>
