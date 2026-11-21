@@ -68,13 +68,15 @@ td.num{text-align:right;white-space:nowrap}
 tr.click{cursor:pointer}tr.click:hover td{background:var(--panel)}
 .bar{height:10px;background:var(--panel);border-radius:99px;overflow:hidden;min-width:80px}
 .bar i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.clip{display:inline-block;max-width:16ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+table .clip{max-width:22ch}
 .pill{font-size:13px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--panel);white-space:nowrap}
 .pill.full{background:var(--acc);color:var(--on)}
 .two{display:grid;grid-template-columns:minmax(0,270px) minmax(0,1fr);gap:28px;align-items:start}
 @media(max-width:820px){.two{grid-template-columns:minmax(0,1fr)}}
 .side{background:var(--panel);border-radius:16px;padding:14px}
 .tabs{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:6px;max-height:60vh;overflow:auto}
-.tab{width:100%;text-align:left;display:flex;justify-content:space-between;gap:8px;align-items:center;min-height:48px;padding:8px 12px;border-radius:10px;border:1.5px solid transparent;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+.tab{width:100%;text-align:left;display:flex;justify-content:flex-start;gap:8px;align-items:center;line-height:1.3;overflow-wrap:anywhere;min-height:48px;padding:8px 12px;border-radius:10px;border:1.5px solid transparent;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
 .tab[aria-current=true]{border-color:var(--acc);box-shadow:inset 5px 0 0 var(--acc)}
 .tab small{color:var(--mut);font-size:13px;white-space:nowrap}
 .inl{display:flex;gap:8px}.inl input{flex:1}
@@ -242,7 +244,7 @@ function normalize(d){d=d&&typeof d==="object"?d:{};d.programs=Array.isArray(d.p
   const fix=x=>{if(x.html==null)x.html=textToHtml(x.body||"")};
   d.admin.forEach(fix);d.faqs.forEach(f=>{if(f.html==null)f.html=textToHtml(f.answer||"")});
   d.programs.forEach(p=>{p.links=p.links||[];p.drafts=p.drafts||[];p.drafts.forEach(fix);p.intakes=p.intakes||[];p.intakes.forEach(i=>i.dates=i.dates||[])});
-  d.programs.sort((a,b)=>a.name.localeCompare(b.name));return d}
+  d.programs.sort((a,b)=>((a.code||"").trim()&&(b.code||"").trim()?a.code.trim().localeCompare(b.code.trim(),undefined,{numeric:true}):0)||a.name.localeCompare(b.name,undefined,{numeric:true}));return d}
 function save(now){
   data.updated=Date.now();
   if(mode==="local"){try{localStorage.setItem(LS,JSON.stringify(data))}catch(e){toast("Couldn't save in this browser. Download a backup now.")}return}
@@ -363,6 +365,10 @@ function applyTheme(){applyIcon();const c=/^#[\da-f]{6}$/i.test(data.settings.co
 
 /* ---------- helpers ---------- */
 const P=()=>data.programs.find(p=>p.id===cur);
+const short=p=>p?((p.code||"").trim()||p.name):"";
+const ovName=p=>p?((p.code||"").trim()||p.name):"";
+const codeName=p=>p?((p.code||"").trim()?(p.code.trim()+" · "+p.name):p.name):"";
+const natCmp=(a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:"base"});
 const findI=key=>{const[a,b]=(key||"").split("|");const p=data.programs.find(x=>x.id===a);const i=p&&p.intakes.find(x=>x.id===b);return i?{p,i}:null};
 function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),2800)}
 async function copyText(text,what){
@@ -394,7 +400,7 @@ function status(i){const s=startOf(i),n=days(s),t=+i.target||0,e=+i.enrolled||0;
 function bar(i){const t=+i.target||0,e=+i.enrolled||0;const pct=t?Math.min(100,Math.round(e/t*100)):0;return`<div class="bar" title="${e} of ${t||"?"}"><i style="width:${pct}%"></i></div>`}
 
 /* placeholders */
-function values(key){const f=findI(key);const v={};if(!f)return v;v["program"]=f.p.name;v["intake"]=f.i.name;
+function values(key){const f=findI(key);const v={};if(!f)return v;v["program"]=f.p.name;v["program name"]=f.p.name;if((f.p.code||"").trim())v["program code"]=f.p.code.trim();v["intake"]=f.i.name;
   f.i.dates.forEach(d=>{if(d.label&&pd(d.date))v[d.label.trim().toLowerCase()]=fmt(d.date)});return v}
 const PH=/(\[[^\]\n]{1,60}\])/;
 function fillText(text,key,html){const v=values(key);
@@ -408,8 +414,8 @@ function fillHtml(h,key,preview){const v=values(key);const box=document.createEl
     if(k in v){if(preview){const mk=document.createElement("mark");mk.textContent=v[k];frag.appendChild(mk)}else frag.appendChild(document.createTextNode(v[k]))}
     else if(preview){const mk=document.createElement("mark");mk.className="miss";mk.textContent=part;frag.appendChild(mk)}else frag.appendChild(document.createTextNode(part))});
     n.parentNode.replaceChild(frag,n)});return box.innerHTML}
-function labelsFor(scope){const s=new Set(["Program","Intake"]);const ps=scope==="admin"?data.programs:data.programs.filter(p=>p.id===scope);
-  ps.forEach(p=>p.intakes.forEach(i=>i.dates.forEach(d=>d.label&&s.add(d.label.trim()))));if(s.size===2)DEF_DATES.forEach(x=>s.add(x));return[...s]}
+function labelsFor(scope){const s=new Set(["Program","Program code","Intake"]);const ps=scope==="admin"?data.programs:data.programs.filter(p=>p.id===scope);
+  ps.forEach(p=>p.intakes.forEach(i=>i.dates.forEach(d=>d.label&&s.add(d.label.trim()))));if(s.size===3)DEF_DATES.forEach(x=>s.add(x));return[...s]}
 
 /* ---------- views ---------- */
 const allViews=(d=data)=>["overview","programs",...((d.settings&&d.settings.groups)||[]),"admin","faqs","notes","backup"];
@@ -435,20 +441,20 @@ function vOverview(){
   up.sort((a,b)=>a.d.date.localeCompare(b.d.date));
   const labels=[...new Set(PG.flatMap(p=>p.intakes.flatMap(i=>i.dates.map(d=>d.label.trim()).filter(Boolean))))].sort();
   const sel=(id,lab,opts,val)=>`<label class="small" style="margin:0;display:flex;flex-direction:column;gap:2px;flex:1 1 140px">${lab}<select id="${id}" style="font-size:15px">${opts.map(([v,n])=>`<option value="${esc(v)}"${String(v)===String(val)?" selected":""}>${esc(n)}</option>`).join("")}</select></label>`;
-  const filters=`<div class="row" style="background:var(--panel);border-radius:12px;padding:10px 12px;margin-bottom:8px;align-items:flex-end">${sel("ov-range","Time frame",[[7,"Next 7 days"],[14,"Next 2 weeks"],[30,"Next 30 days"],[60,"Next 60 days"],[90,"Next 3 months"],[180,"Next 6 months"],[365,"Next 12 months"]],o.range)}${data.settings.groups.length?sel("ov-group","Program tab",[["","All program tabs"]].concat(["programs",...data.settings.groups].map(g=>[g,nm(g)])),o.group||""):""}${sel("ov-prog","Program",[["","All programs"]].concat(PG.map(p=>[p.id,p.name])),o.prog)}${sel("ov-label","Type of date",[["","All dates"]].concat(labels.map(l=>[l.toLowerCase(),l])),o.label)}${sel("ov-limit","Show",[[10,"10 dates"],[25,"25 dates"],[50,"50 dates"],[9999,"All"]],o.limit)}<label class="small" style="margin:0;display:flex;gap:6px;align-items:center;min-height:44px"><input type="checkbox" id="ov-notes" ${o.notes?"checked":""} style="width:20px;height:20px"> Include my notes</label></div>`;
+  const filters=`<div class="row" style="background:var(--panel);border-radius:12px;padding:10px 12px;margin-bottom:8px;align-items:flex-end">${sel("ov-range","Time frame",[[7,"Next 7 days"],[14,"Next 2 weeks"],[30,"Next 30 days"],[60,"Next 60 days"],[90,"Next 3 months"],[180,"Next 6 months"],[365,"Next 12 months"]],o.range)}${data.settings.groups.length?sel("ov-group","Program tab",[["","All program tabs"]].concat(["programs",...data.settings.groups].map(g=>[g,nm(g)])),o.group||""):""}${sel("ov-prog","Program",[["","All programs"]].concat(PG.map(p=>[p.id,codeName(p)])),o.prog)}${sel("ov-label","Type of date",[["","All dates"]].concat(labels.map(l=>[l.toLowerCase(),l])),o.label)}${sel("ov-limit","Show",[[10,"10 dates"],[25,"25 dates"],[50,"50 dates"],[9999,"All"]],o.limit)}<label class="small" style="margin:0;display:flex;gap:6px;align-items:center;min-height:44px"><input type="checkbox" id="ov-notes" ${o.notes?"checked":""} style="width:20px;height:20px"> Include my notes</label></div>`;
   const active=all.filter(x=>!x.start||days(x.start)>=-30),upcoming=all.filter(x=>x.start&&x.start>=t);
   const enr=upcoming.reduce((s,x)=>s+(+x.i.enrolled||0),0),tgt=upcoming.reduce((s,x)=>s+(+x.i.target||0),0),nxt=upcoming[0];
   if(!data.programs.length)return`<h2>Welcome to your hub</h2><p>This hub is yours: your own programs, drafts, FAQs and colours. Start by pasting your academic calendar from Excel on the <a href="#backup">${esc(nm("backup"))}</a> page, or add programs one at a time on the <a href="#programs">${esc(nm("programs"))}</a> page.</p>`;
   let h=`<h2>${esc(nm("overview"))}</h2><div class="stats">
 <div class="stat"><b>${upcoming.length}</b><span>upcoming intakes across ${PG.length} program${PG.length===1?"":"s"}</span></div>
 <div class="stat"><b>${enr}${tgt?` <small class="mut" style="font-size:.5em">of ${tgt}</small>`:""}</b><span>students enrolled in upcoming intakes</span></div>
-<div class="stat"><b>${nxt?esc(fmt(nxt.start,"short")):"None"}</b><span>${nxt?"next start: "+esc(nxt.p.name):"no upcoming start dates"}</span></div></div>`;
+<div class="stat"><b>${nxt?esc(fmt(nxt.start,"short")):"None"}</b><span>${nxt?"next start: "+esc(short(nxt.p)):"no upcoming start dates"}</span></div></div>`;
   h+=`<div class="ov"><div><h3>Upcoming dates <span class="small mut" style="font-weight:400">${up.length} found</span></h3>${filters}`;
   h+=up.length?`<ul class="dates">`+up.slice(0,+o.limit).map(x=>{const d=pd(x.d.date),n=days(x.d.date);
-    if(x.note){const pn=(data.programs.find(p=>p.id===x.note.prog)||{}).name;return`<li><div class="cal" style="background:var(--fill)"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what"><span class="pill">Note</span> ${esc(x.note.text.split("\n")[0].slice(0,120))} <span class="soon"${n<0?' style="color:var(--bad)"':""}>${n<0?"overdue":away(n)}</span></div><div class="sub">My note${pn?" · "+esc(pn):""} · ${esc(fmt(x.d.date,"nodow"))} · <a href="#notes">open notes</a></div></div></li>`}
-    return`<li><div class="cal"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what">${esc(x.d.label)} <span class="soon">${away(n)}</span></div><div class="sub">${esc(x.p.name)} · ${esc(x.i.name)} · ${esc(fmt(x.d.date,"nodow"))}</div></div></li>`}).join("")+`</ul>`+(up.length>+o.limit?`<p class="hint">Showing ${o.limit} of ${up.length}. Change "Show" to see more.</p>`:""):`<p class="empty">No dates match these filters.</p>`;
+    if(x.note){const pn=short(data.programs.find(p=>p.id===x.note.prog));return`<li><div class="cal" style="background:var(--fill)"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what"><span class="pill">Note</span> ${esc(x.note.text.split("\n")[0].slice(0,120))} <span class="soon"${n<0?' style="color:var(--bad)"':""}>${n<0?"overdue":away(n)}</span></div><div class="sub">My note${pn?" · "+esc(pn):""} · ${esc(fmt(x.d.date,"nodow"))} · <a href="#notes">open notes</a></div></div></li>`}
+    return`<li><div class="cal"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what">${esc(x.d.label)} <span class="soon">${away(n)}</span></div><div class="sub"><span class="clip" title="${esc(x.p.name)}">${esc(ovName(x.p))}</span> · ${esc(x.i.name)} · ${esc(fmt(x.d.date,"nodow"))}</div></div></li>`}).join("")+`</ul>`+(up.length>+o.limit?`<p class="hint">Showing ${o.limit} of ${up.length}. Change "Show" to see more.</p>`:""):`<p class="empty">No dates match these filters.</p>`;
   h+=`</div><div><h3>Enrolment by intake</h3>`;
-  h+=active.length?`<table class="stack"><thead><tr><th>Program and intake</th><th>Starts</th><th>Enrolled</th><th></th><th>Status</th></tr></thead><tbody>`+active.map(x=>`<tr class="click" data-act="goprog" data-id="${x.p.id}"><td><b>${esc(x.p.name)}</b><br><span class="small mut">${esc(x.i.name)}</span></td><td style="white-space:nowrap">${esc(x.start?fmt(x.start,"short"):"—")}</td><td class="num">${+x.i.enrolled||0}${x.i.target?" / "+(+x.i.target):""}</td><td style="width:22%">${bar(x.i)}</td><td>${status(x.i)}</td></tr>`).join("")+`</tbody></table>`:`<p class="empty">No intakes yet.</p>`;
+  h+=active.length?`<table class="stack"><thead><tr><th>Program</th><th>Intake</th><th>Starts</th><th>Enrolled</th><th></th><th>Status</th></tr></thead><tbody>`+active.map(x=>`<tr class="click" data-act="goprog" data-id="${x.p.id}"><td><b class="clip" title="${esc(x.p.name)}">${esc(ovName(x.p))}</b></td><td><span class="clip" title="${esc(x.i.name)}">${esc(x.i.name)}</span></td><td style="white-space:nowrap">${esc(x.start?fmt(x.start,"short"):"—")}</td><td class="num">${+x.i.enrolled||0}${x.i.target?" / "+(+x.i.target):""}</td><td style="width:22%">${bar(x.i)}</td><td>${status(x.i)}</td></tr>`).join("")+`</tbody></table>`:`<p class="empty">No intakes yet.</p>`;
   return h+`<p class="hint">Click a row to open that program. Update enrolment numbers on each program's page.</p></div></div>`;
 }
 
@@ -456,14 +462,14 @@ function vPrograms(){
   const G=grp(),inG=progsIn(G);{const P0=P();if(!P0||gOf(P0)!==G)cur=inG[0]?.id||null}
   const list=inG.filter(p=>!q||p.name.toLowerCase().includes(q));
   let h=`<div class="two"><aside class="side"><input id="search" type="search" placeholder="Search programs" aria-label="Search programs" value="${esc(q)}"><ul class="tabs">`+
-    (list.length?list.map(p=>`<li><button class="tab" data-act="open" data-id="${p.id}" aria-current="${p.id===cur}"><span>${esc(p.name)}</span><small>${p.intakes.length} intakes</small></button></li>`).join(""):`<li class="empty">${inG.length?"No matches.":"No programs in this tab yet."}</li>`)+`</ul>`+
-    (readOnly?"":`<form class="inl" data-form="addprog"><input name="name" placeholder="New program name" aria-label="New program name" autocomplete="off"><button class="pri">Add</button></form><button style="width:100%;margin-top:10px" data-act="bulk">Add dates to many programs</button>`)+`</aside><section>`;
+    (list.length?list.map(p=>`<li><button class="tab" data-act="open" data-id="${p.id}" aria-current="${p.id===cur}"><span>${(p.code||"").trim()?`<b style="color:var(--acc);margin-right:6px">${esc(p.code.trim())}</b>`:""}${esc(p.name)}</span></button></li>`).join(""):`<li class="empty">${inG.length?"No matches.":"No programs in this tab yet."}</li>`)+`</ul>`+
+    (readOnly?"":`<form class="inl" data-form="addprog" style="flex-wrap:wrap"><input name="code" placeholder="Code" aria-label="Short code (optional)" autocomplete="off" style="flex:0 0 76px;width:76px" maxlength="12"><input name="name" placeholder="New program name" aria-label="New program name" autocomplete="off" style="flex:1 1 140px"><button class="pri">Add</button></form><button style="width:100%;margin-top:10px" data-act="bulk">Add dates to many programs</button>`)+`</aside><section>`;
   if(ui.bulk&&!readOnly)return h+bulkForm()+`</section></div>`;
   const p=P();
   if(!p)return h+`<h2>No program selected</h2><p class="mut">Add a program on the left, or paste your calendar on the <a href="#backup">${esc(nm("backup"))}</a> page.</p></section></div>`;
   const ed=!readOnly;
-  h+=ui.rename?`<form class="inl" data-form="rename"><input name="name" value="${esc(p.name)}" aria-label="Program name" required><button class="pri">Save</button><button type="button" class="ghost" data-act="cancel">Cancel</button></form>`:
-    `<h3 style="margin:0"><span style="font-size:clamp(24px,3vw,32px);line-height:1.1">${esc(p.name)}</span>${ed?`<span class="row">${data.settings.groups.length?`<select data-moveprog="${p.id}" aria-label="Move this program to another tab" style="width:auto;font-size:14px;min-height:40px">${["programs",...data.settings.groups].map(g=>`<option value="${g}"${g===gOf(p)?" selected":""}>${g===gOf(p)?"In: ":"Move to: "}${esc(nm(g))}</option>`).join("")}</select>`:""}<button class="ghost" data-act="rename">Rename</button>${ui.confirm==="prog"?`<button class="danger" data-act="delprog">Delete program and everything in it</button><button class="ghost" data-act="cancel">Keep</button>`:`<button class="ghost" data-act="ask" data-w="prog">Delete</button>`}</span>`:""}</h3>`;
+  h+=ui.rename?`<form class="form" data-form="rename"><div class="grid3" style="grid-template-columns:minmax(0,3fr) minmax(0,1fr)"><div><label for="rn-n">Full program name</label><input id="rn-n" name="name" value="${esc(p.name)}" required></div><div><label for="rn-c">Short code</label><input id="rn-c" name="code" value="${esc(p.code||"")}" placeholder="e.g. 01 or PSW" maxlength="12"></div></div><p class="hint">The short code is shown in the Overview and lists to save space. Emails always use the full name for [Program]; use [Program code] if you ever want the code in an email.</p><div class="row end" style="margin-top:10px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save</button></div></form>`:
+    `<h3 style="margin:0"><span style="font-size:clamp(24px,3vw,32px);line-height:1.1">${(p.code||"").trim()?`<span style="color:var(--acc)">${esc(p.code.trim())}</span> `:""}${esc(p.name)}</span>${ed?`<span class="row">${data.settings.groups.length?`<select data-moveprog="${p.id}" aria-label="Move this program to another tab" style="width:auto;font-size:14px;min-height:40px">${["programs",...data.settings.groups].map(g=>`<option value="${g}"${g===gOf(p)?" selected":""}>${g===gOf(p)?"In: ":"Move to: "}${esc(nm(g))}</option>`).join("")}</select>`:""}<button class="ghost" data-act="rename">${(p.code||"").trim()?"Rename / code":"Rename / add code"}</button>${ui.confirm==="prog"?`<button class="danger" data-act="delprog">Delete program and everything in it</button><button class="ghost" data-act="cancel">Keep</button>`:`<button class="ghost" data-act="ask" data-w="prog">Delete</button>`}</span>`:""}</h3>`;
   const SN={intakes:"Intakes and dates",files:"Links and files",drafts:"Email drafts"};
   const secTitle=k=>{const custom=(data.settings.secNames||{})[k];if(ui.secEdit===k&&ed)return`<form class="secname" data-form="secname" data-v="${k}"><input name="n" value="${esc(custom||"")}" placeholder="${SN[k]}" aria-label="Section name"><button class="pri">Save</button><button type="button" class="ghost" data-act="cancel">Cancel</button></form>`;
     const t=custom||SN[k];return`<span>${esc(t)}${k==="drafts"&&!custom?" for "+esc(p.name):""}${ed?`<button type="button" class="ghost" data-act="secname" data-v="${k}" style="min-height:36px;font-size:14px;font-weight:600;margin-left:4px" title="Rename this section">Rename</button>`:""}</span>`};
@@ -565,7 +571,7 @@ function bulkForm(){
   const row=`<div class="drow"><input name="dl" list="bk-labels" placeholder="e.g. Orientation" aria-label="Date name"><input name="dd" type="date" aria-label="Date"><button type="button" class="sq ghost" data-act="rowmv" data-d="-1" aria-label="Move this date up">↑</button><button type="button" class="sq ghost" data-act="rowmv" data-d="1" aria-label="Move this date down">↓</button><button type="button" class="sq ghost" data-act="rmrow" aria-label="Remove this date">×</button></div>`;
   return`<h2>Add dates to many programs</h2><p class="mut">Pick the programs, name the intake, and enter the dates once. They're added to every program you tick. If a program already has an intake with that name, its dates are updated.</p>
 <form class="form" data-form="bulk"><label>Programs</label><div class="row" style="margin-bottom:6px"><button type="button" class="ghost" data-act="bkall">Select all</button><button type="button" class="ghost" data-act="bknone">Clear</button></div>
-<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">${progsIn(grp()).map(p=>`<label style="margin:0;font-weight:400;display:flex;gap:8px;align-items:center;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px"><input type="checkbox" name="bp" value="${p.id}" style="width:20px;height:20px"${p.id===cur?" checked":""}> ${esc(p.name)}</label>`).join("")||'<p class="empty">Add some programs first.</p>'}</div>
+<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">${progsIn(grp()).map(p=>`<label style="margin:0;font-weight:400;display:flex;gap:8px;align-items:center;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px"><input type="checkbox" name="bp" value="${p.id}" style="width:20px;height:20px"${p.id===cur?" checked":""}> ${esc(codeName(p))}</label>`).join("")||'<p class="empty">Add some programs first.</p>'}</div>
 <div class="grid2" style="margin-top:6px"><div><label for="bk-n">Intake name</label><input id="bk-n" name="name" list="bk-names" required placeholder="e.g. May 2027"><datalist id="bk-names">${names.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div><div><label for="bk-t">Target seats (optional, same for all)</label><input id="bk-t" name="target" type="number" min="0"></div></div>
 <datalist id="bk-labels">${labels.map(l=>`<option value="${esc(l)}">`).join("")}</datalist>
 <label>Dates</label><div id="drows">${DEF_DATES.map(l=>row.replace('name="dl"',`name="dl" value="${esc(l)}"`)).join("")}</div>
@@ -584,19 +590,19 @@ function vNotes(){
   if(!readOnly)h+=ui.edit&&ui.edit.startsWith("n:")?"":noteForm({text:"",date:"",prog:""});
   h+=`<div class="row" style="margin:14px 0 8px;justify-content:space-between"><b>${list.length} note${list.length===1?"":"s"}</b>${doneCount?`<button class="ghost" data-act="togdone">${ui.showDone?"Hide":"Show"} ${doneCount} done</button>`:""}</div>`;
   if(!list.length)return h+`<p class="empty">${data.notes.length?"Everything's done.":"No notes yet."}</p>`;
-  return h+`<div class="drafts">`+list.map(n=>{if(ui.edit==="n:"+n.id)return noteForm(n);const pn=(data.programs.find(p=>p.id===n.prog)||{}).name;const dd=days(n.date);
+  return h+`<div class="drafts">`+list.map(n=>{if(ui.edit==="n:"+n.id)return noteForm(n);const pn=short(data.programs.find(p=>p.id===n.prog));const dd=days(n.date);
     return`<article class="draft" style="${n.pin?"border-color:var(--acc);":""}${n.done?"opacity:.6;":""}"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><input type="checkbox" data-done="${n.id}" ${n.done?"checked":""} aria-label="Mark done" style="width:22px;height:22px;flex:none;margin-top:3px"><div style="flex:1"><div style="white-space:pre-wrap;overflow-wrap:anywhere${n.done?";text-decoration:line-through":""}">${esc(n.text)}</div><div class="row small mut" style="margin-top:6px;gap:6px">${n.pin?'<span class="pill full">Pinned</span>':""}${n.date?`<span class="pill"${dd!=null&&dd<0&&!n.done?' style="color:var(--bad)"':""}>${esc(fmt(n.date,"short"))} · ${dd!=null&&dd<0?"overdue":away(dd)}</span>`:""}${pn?`<span class="pill">${esc(pn)}</span>`:""}</div></div></div>
 ${readOnly?"":`<div class="row end" style="margin-top:6px"><button class="ghost" data-act="pin" data-id="${n.id}">${n.pin?"Unpin":"Pin"}</button><button class="ghost" data-act="editnote" data-id="${n.id}">Edit</button>${ui.confirm==="n"+n.id?`<button class="danger" data-act="delnote" data-id="${n.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="n${n.id}">Delete</button>`}</div>`}</article>`}).join("")+`</div>`;
 }
 function noteForm(n){
   return`<form class="form" data-form="note" data-id="${n.id||""}"><label for="nt-t">${n.id?"Edit note":"New note"}</label><textarea id="nt-t" name="text" style="min-height:90px" required placeholder="e.g. Follow up with Maria about missing transcript">${esc(n.text)}</textarea>
-<div class="grid2"><div><label for="nt-d">Date (optional)</label><input id="nt-d" name="date" type="date" value="${esc(n.date)}"></div><div><label for="nt-p">Program (optional)</label><select id="nt-p" name="prog"><option value="">None</option>${data.programs.map(p=>`<option value="${p.id}"${p.id===n.prog?" selected":""}>${esc(p.name)}</option>`).join("")}</select></div></div>
+<div class="grid2"><div><label for="nt-d">Date (optional)</label><input id="nt-d" name="date" type="date" value="${esc(n.date)}"></div><div><label for="nt-p">Program (optional)</label><select id="nt-p" name="prog"><option value="">None</option>${data.programs.map(p=>`<option value="${p.id}"${p.id===n.prog?" selected":""}>${esc(codeName(p))}</option>`).join("")}</select></div></div>
 <div class="row end" style="margin-top:12px">${n.id?`<button type="button" class="ghost" data-act="cancel">Cancel</button>`:""}<button class="pri">${n.id?"Save note":"Add note"}</button></div></form>`}
 
 /* ---------- FAQs ---------- */
 function vFaqs(){
-  const cats=[["","All"],["general","General"]].concat(data.programs.map(p=>[p.id,p.name]));
-  const catName=c=>c==="general"||!c?"General":(data.programs.find(p=>p.id===c)||{}).name||"General";
+  const cats=[["","All"],["general","General"]].concat(data.programs.map(p=>[p.id,codeName(p)]));
+  const catName=c=>c==="general"||!c?"General":short(data.programs.find(p=>p.id===c))||"General";
   const list=data.faqs.filter(f=>(!fcat||(f.cat||"general")===fcat)&&(!fq||(f.q+" "+htmlToText(f.html)).toLowerCase().includes(fq)));
   let h=`<h2>${esc(nm("faqs"))}</h2><p class="mut">Answers to the questions students and staff ask most. Search, open, and copy the answer straight into an email.</p>
 <div class="row" style="margin:14px 0"><input id="fsearch" type="search" placeholder="Search questions and answers" aria-label="Search FAQs" value="${esc(fq)}" style="flex:2 1 260px;width:auto"><select id="fcat" aria-label="Filter by program" style="flex:1 1 180px;width:auto">${cats.map(([v,n])=>`<option value="${v}"${v===fcat?" selected":""}>${esc(n)}</option>`).join("")}</select>${readOnly||ui.edit==="newfaq"?"":`<button class="pri" data-act="newfaq">Add FAQ</button>`}</div>`;
@@ -606,7 +612,7 @@ function vFaqs(){
   return h+list.map(f=>ui.edit===f.id?faqForm(f):`<details class="faq"${ui.open===f.id?" open":""}><summary><span>${esc(f.q)} <span class="pill" style="margin-left:6px">${esc(catName(f.cat))}</span></span></summary><div class="in"><div class="body" style="max-height:none">${sanitize(f.html)}</div><div class="row"><button class="pri" data-act="copyfaq" data-id="${f.id}">Copy answer</button>${readOnly?"":`<button class="ghost" data-act="editfaq" data-id="${f.id}">Edit</button>${ui.confirm==="f"+f.id?`<button class="danger" data-act="delfaq" data-id="${f.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="f${f.id}" data-open="${f.id}">Delete</button>`}`}</div></div></details>`).join("");
 }
 function faqForm(f){
-  const cats=[["general","General"]].concat(data.programs.map(p=>[p.id,p.name]));
+  const cats=[["general","General"]].concat(data.programs.map(p=>[p.id,codeName(p)]));
   return`<form class="form" data-form="faq" data-id="${f.id||""}"><div class="grid2"><div><label for="fq-q">Question</label><input id="fq-q" name="q" value="${esc(f.q)}" required placeholder="e.g. When is the fee deadline?"></div><div><label for="fq-c">Program</label><select id="fq-c" name="cat">${cats.map(([v,n])=>`<option value="${v}"${v===(f.cat||"general")?" selected":""}>${esc(n)}</option>`).join("")}</select></div></div><label>Answer</label>${rte("fq-a",f.html,"Write the answer. Bold, lists and links are kept when you copy it.","")}<div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save FAQ</button></div></form>`}
 
 /* ---------- settings and backup ---------- */
@@ -663,6 +669,7 @@ function doImport(){
     let p=data.programs.find(x=>x.name.toLowerCase()===pn.toLowerCase());if(!p){p={id:uid(),name:pn,links:[],drafts:[],intakes:[],group:($("imptab")&&$("imptab").value)||"programs"};data.programs.push(p);nP++}
     let i=p.intakes.find(x=>x.name.toLowerCase()===inn.toLowerCase());if(!i){i={id:uid(),name:inn,target:"",enrolled:"",dates:[]};p.intakes.push(i);nI++}
     head.slice(2).forEach((h,k)=>{const v=r[k+2]||"",hl=h.trim();if(!hl)return;
+      if(/^(code|short\s*code|program\s*code)$/i.test(hl)){if(v)p.code=v;return}
       if(/^target/i.test(hl)){if(v!=="")i.target=String(parseInt(v)||0);return}
       if(/^enrol/i.test(hl)){if(v!=="")i.enrolled=String(parseInt(v)||0);return}
       if(!v)return;const d=parseDate(v,order);if(!d){bad++;return}
@@ -792,7 +799,7 @@ document.addEventListener("submit",e=>{
   const v=n=>(f.elements[n]&&f.elements[n].value||"").trim(),k=f.dataset.form;
   if(k==="settings"){data.settings.name=v("name");data.settings.tagline=v("tagline");data.settings.color=$("st-c").value;data.settings.iconText=v("iconText").toUpperCase();data.dateStyle=v("dateStyle")||"long";save(true);applyTheme();render();toast("Settings saved");return}
   if(k==="addprog"){const n=v("name");if(!n)return;if(data.programs.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast("That program already exists.");return}
-    const p={id:uid(),name:n,links:[],drafts:[],intakes:[],group:grp()};data.programs.push(p);normalize(data);cur=p.id;reset();save(true);render();return}
+    const p={id:uid(),name:n,code:v("code"),links:[],drafts:[],intakes:[],group:grp()};data.programs.push(p);normalize(data);cur=p.id;reset();save(true);render();return}
   if(k==="draft"){const body={title:v("title"),to:v("to"),subject:v("subject"),html:sanitize($("df-b").innerHTML)};
     const l=f.dataset.s==="admin"?data.admin:data.programs.find(p=>p.id===f.dataset.s).drafts;
     const id=f.dataset.id;if(id){const x=l.find(x=>x.id===id);if(x){Object.assign(x,body);delete x.body}openDrafts.add(id)}else{const nid=uid();l.push(Object.assign({id:nid},body));openDrafts.add(nid)}
@@ -817,7 +824,7 @@ document.addEventListener("submit",e=>{
     if(id){const x=data.faqs.find(x=>x.id===id);if(x){Object.assign(x,body);delete x.answer}}else data.faqs.unshift(Object.assign({id:uid()},body));
     reset();ui.open=id||data.faqs[0].id;save(true);render();toast("FAQ saved");return}
   const p=P();if(!p)return;
-  if(k==="rename"){const n=v("name");if(n)p.name=n;normalize(data)}
+  if(k==="rename"){const n=v("name");if(n)p.name=n;p.code=v("code");normalize(data)}
   if(k==="link"){const url=cleanUrl(v("url"));if(!url){toast("That link doesn't look right. Paste the full address.");return}
     const ic=v("icon")||"auto";const l={label:v("label")||"Untitled link",url,icon:ic==="auto"?"":ic};if(ic==="custom"){l.iconText=v("iconText").toUpperCase()||"?";l.iconColor=v("iconColor")}if(f.dataset.k==="")p.links.push(l);else p.links[+f.dataset.k]=l}
   if(k==="intake"){const ls=[...f.querySelectorAll("input[name=dl]")],ds=[...f.querySelectorAll("input[name=dd]")];
