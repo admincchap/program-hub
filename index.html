@@ -1003,7 +1003,7 @@ function vInquiries(){const ed=!readOnly;const W=data.inqWeeks;const weeks=Objec
   let h=`<h2>Inquiries</h2><p class="mut" style="margin-top:-6px">Drop in the inquiries list exported from SharePoint (Excel or CSV) to see weekly numbers and who still needs a follow-up. The file is read in this browser only. Names and emails aren't saved anywhere; only the weekly counts are kept.</p>
 <label for="inqfile" class="drop" style="display:block;border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;cursor:pointer;font-weight:600">${inq?"Loaded "+esc(inq.file)+" · "+inq.rows.length+" rows. Choose another file to refresh.":"Choose or drop the inquiries file (.xlsx or .csv)"}<input type="file" id="inqfile" accept=".xlsx,.csv" style="display:none"></label>`;
   if(inq){const m=inqMap();
-    h+=`<details class="draft" style="margin-top:12px"${IQF.some(([k])=>!m[k])||ui.inqMapOpen?" open":""}><summary><span><span class="st">Match your columns</span><span class="ss">${IQF.map(([k,l])=>l+": "+(m[k]?esc(m[k]):"not set")).join(" · ")}</span></span></summary><div class="in"><div class="grid3">${IQF.map(([k,l])=>`<div><label for="im-${k}">${l}</label><select id="im-${k}" data-inqmap="${k}"><option value="">(none)</option>${inq.headers.map(x=>`<option${x===m[k]?" selected":""}>${esc(x)}</option>`).join("")}</select></div>`).join("")}</div>`;
+    h+=`<details class="draft" style="margin-top:12px"${IQF.some(([k])=>k!=="tag"&&!m[k])||ui.inqMapOpen?" open":""}><summary><span><span class="st">Match your columns</span><span class="ss">${IQF.map(([k,l])=>l+": "+(m[k]?esc(m[k]):"not set")).join(" · ")}</span></span></summary><div class="in"><div class="grid3">${IQF.map(([k,l])=>`<div><label for="im-${k}">${l}</label><select id="im-${k}" data-inqmap="${k}"><option value="">(none)</option>${inq.headers.map(x=>`<option${x===m[k]?" selected":""}>${esc(x)}</option>`).join("")}</select></div>`).join("")}</div>`;
     if(m.contacted){const vals=[...new Set(inq.rows.map(r=>String(r[m.contacted]??"").trim()||"(blank)"))].slice(0,30);
       if(!data.settings.inqYes){data.settings.inqYes=vals.filter(v=>/yes|true|contacted|done|replied|sent|✓|complete|follow/i.test(v)&&!/^no|not|pending/i.test(v))}
       h+=`<label style="margin-top:10px">Which values mean "contacted"?</label><div class="row">${vals.map(v=>`<label style="margin:0;font-weight:400;display:flex;gap:6px;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:4px 10px"><input type="checkbox" data-inqyes="${esc(v)}" style="width:18px;height:18px"${data.settings.inqYes.includes(v)?" checked":""}> ${esc(v)}</label>`).join("")}</div>`}
@@ -1037,7 +1037,8 @@ function vInquiries(){const ed=!readOnly;const W=data.inqWeeks;const weeks=Objec
   return h}
 
 /* ---------- hooks ---------- */
-function extChange(t){
+function extChange(t){const y=window.scrollY;const r=extChange0(t);if(r)requestAnimationFrame(()=>window.scrollTo(0,y));return r}
+function extChange0(t){
   if(t.id==="sn-y"){snapY=+t.value;render();return true}
   if(t.id==="sn-hide"){snapHide=t.checked;render();return true}
   if(t.id==="iw"){inqW=t.value;render();return true}
@@ -1051,7 +1052,8 @@ function extChange(t){
   if(t.dataset.inqgrp!=null){t.dataset.inqgrp.split(",").filter(Boolean).forEach(e=>t.checked?inqSel.add(e):inqSel.delete(e));render();return true}
   if(t.dataset.inqdraft){data.settings.inqDraft=Object.assign({},data.settings.inqDraft,{[t.dataset.inqdraft]:t.value});if(!readOnly)save();render();return true}
   return false}
-function extAct(a,b){
+function extAct(a,b){const y=window.scrollY;const r=extAct0(a,b);if(r&&a!=="snapxl")requestAnimationFrame(()=>window.scrollTo(0,y));return r}
+function extAct0(a,b){
   if(a==="settab"){setTab=b.dataset.v;render();return true}
   if(a==="snapxl"){snapXL().catch(()=>toast("Couldn't make the Excel file."));return true}
   if(a==="inqcopy"){copyText(b.dataset.v,"Email");return true}
