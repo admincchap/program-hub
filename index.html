@@ -73,6 +73,10 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--panel)}
 table .clip{max-width:22ch}
 .gridn{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) minmax(0,1fr);gap:0 12px}@media(max-width:600px){.gridn{grid-template-columns:minmax(0,1fr)}}
 .grip{cursor:grab;touch-action:none;user-select:none;font-size:20px;line-height:1;color:var(--mut);padding:8px 6px;margin-left:-6px;flex:none}.grip:active{cursor:grabbing}.dragging{opacity:.9;box-shadow:0 8px 24px rgba(0,0,0,.18);position:relative;z-index:5;background:var(--bg)}
+.invgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}.invcard{border:1.5px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}.invcard.lv-bad{border-color:var(--bad)}.invcard.lv-warn{border-color:var(--warn)}.invcard .ib{padding:10px 14px 8px}
+.invph{display:block;width:100%;height:150px;object-fit:contain;background:#fff;border-bottom:1px solid var(--line)}span.invph{display:flex;align-items:center;justify-content:center;background:var(--panel);color:var(--mut);font-size:14px}
+.thumb{display:inline-block;width:48px;height:48px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;vertical-align:middle}span.thumb{display:inline-flex;align-items:center;justify-content:center;background:var(--panel);color:var(--mut);font-size:10px;text-align:center;line-height:1.1}
+.chk{margin:0;font-weight:400;display:inline-flex;gap:6px;align-items:center;font-size:15px}.chk input{width:18px;height:18px}
 .hlset{display:inline-flex;gap:3px;align-items:center;margin:0 4px}.tools .hl{width:28px;min-width:28px;min-height:28px;height:28px;padding:0;border:1.5px solid var(--line);border-radius:7px}.tools .tc{background:var(--bg);font-weight:800;font-size:16px;text-decoration:underline;text-decoration-thickness:3px}.tools .hl0{background:var(--bg);color:var(--mut);font-size:14px}
 .who{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border-radius:50%;font-size:13px;font-weight:800;letter-spacing:.02em}
 table.snap{font-size:14px}table.snap td,table.snap th{padding:7px 6px}table.snap td:first-child{min-width:200px}table.snap tr.subr td{border-bottom-style:dashed}table.snap tfoot td{border-top:1.5px solid var(--line);background:var(--panel)}
@@ -247,7 +251,7 @@ function htmlToText(h){const d=document.createElement("div");d.innerHTML=String(
 
 /* ---------- storage ---------- */
 const LS="programhub-v2";const FB_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey);let auth=null,fs=null,user=null,unsub=null;let doc=null,writing=Promise.resolve(),saveT=null;
-function normalize(d){d=d&&typeof d==="object"?d:{};d.programs=Array.isArray(d.programs)?d.programs:[];d.admin=Array.isArray(d.admin)?d.admin:[];d.faqs=Array.isArray(d.faqs)?d.faqs:[];d.dateStyle=d.dateStyle||"long";d.settings=d.settings||{};d.notes=Array.isArray(d.notes)?d.notes:[];d.tally=Array.isArray(d.tally)?d.tally:[];d.inqWeeks=d.inqWeeks&&typeof d.inqWeeks==="object"?d.inqWeeks:{};
+function normalize(d){d=d&&typeof d==="object"?d:{};d.programs=Array.isArray(d.programs)?d.programs:[];d.admin=Array.isArray(d.admin)?d.admin:[];d.faqs=Array.isArray(d.faqs)?d.faqs:[];d.dateStyle=d.dateStyle||"long";d.settings=d.settings||{};d.notes=Array.isArray(d.notes)?d.notes:[];d.tally=Array.isArray(d.tally)?d.tally:[];{d.inv=d.inv&&typeof d.inv==="object"?d.inv:{};const V=d.inv;["items","suppliers","counts","orders","deliveries"].forEach(k=>V[k]=Array.isArray(V[k])?V[k]:[]);V.photos=V.photos&&typeof V.photos==="object"?V.photos:{};V.settings=Object.assign({cc:"",subject:"Lab supply order #[Order number] – [Date]",body:INV_BODY,hst:13,org:"",remind:true,countEvery:30,nextNo:1},V.settings||{});V.items.forEach(it=>{it.tags=Array.isArray(it.tags)?it.tags:[]})}d.inqWeeks=d.inqWeeks&&typeof d.inqWeeks==="object"?d.inqWeeks:{};
   d.settings.groups=Array.isArray(d.settings.groups)?d.settings.groups.filter(g=>/^pg-[a-z0-9]+$/.test(g)):[];
   d.programs.forEach(p=>{if(!(p.group==="programs"||d.settings.groups.includes(p.group)))p.group="programs"});
   const VIEWS=allViews(d);const ord=Array.isArray(d.settings.tabs)?d.settings.tabs.filter(v=>VIEWS.includes(v)):[];VIEWS.forEach(v=>{if(ord.includes(v))return;const b=ord.indexOf("backup");if(v!=="backup"&&b>-1)ord.splice(b,0,v);else ord.push(v)});d.settings.tabs=ord;
@@ -435,12 +439,12 @@ function labelsFor(scope){const s=new Set(["Program","Program code","Intake"]);c
   ps.forEach(p=>p.intakes.forEach(i=>i.dates.forEach(d=>d.label&&s.add(d.label.trim()))));if(s.size===3)DEF_DATES.forEach(x=>s.add(x));return[...s]}
 
 /* ---------- views ---------- */
-const allViews=(d=data)=>["overview","programs",...((d.settings&&d.settings.groups)||[]),"snapshot","inquiries","admin","faqs","notes","backup"];
+const allViews=(d=data)=>["overview","programs",...((d.settings&&d.settings.groups)||[]),"snapshot","inquiries","inventory","admin","faqs","notes","backup"];
 const isProgView=v=>v==="programs"||/^pg-/.test(v||"");
 const grp=()=>isProgView(view)?view:"programs";
 const gOf=p=>(p.group&&isProgView(p.group)?p.group:"programs");
 const progsIn=g=>data.programs.filter(p=>gOf(p)===g);
-const NAMES={overview:"Overview",programs:"Programs",snapshot:"Enrolment snapshot",inquiries:"Inquiries",admin:"Admin drafts",faqs:"FAQs",notes:"Notes",backup:"Settings and backup"};
+const NAMES={overview:"Overview",programs:"Programs",snapshot:"Enrolment snapshot",inquiries:"Inquiries",inventory:"Inventory",admin:"Admin drafts",faqs:"FAQs",notes:"Notes",backup:"Settings and backup"};
 const nm=v=>((data.settings.tabNames||{})[v]||"").trim()||NAMES[v]||"More programs";
 function renderNav(){const vis=data.settings.tabs.filter(v=>!data.settings.hidden.includes(v));$("nav").innerHTML=vis.map(v=>`<a href="#${v}" aria-current="${v===view?"page":"false"}">${esc(nm(v))}</a>`).join("")}
 function route(){if(mode==="auth"){showAuth();return}const vis=data.settings.tabs.filter(v=>!data.settings.hidden.includes(v));const h=(location.hash||"").slice(1);view=allViews().includes(h)?h:vis[0]||"overview";if(isProgView(view)){const P0=P();if(!P0||gOf(P0)!==view)cur=progsIn(view)[0]?.id||null}else if(!cur||!P())cur=data.programs[0]?.id||null;applyTheme();render()}
@@ -448,7 +452,7 @@ window.addEventListener("hashchange",()=>{reset();route()});
 function render(){
   renderNav();
   const note=mode==="local"&&FB_ON?`<div class="banner">You're using the hub without an account, so it's saved in this browser only. <button class="ghost" data-act="signin" style="min-height:36px;padding:0 6px;text-decoration:underline">Sign in or create an account</button> to keep it on all your devices.</div>`:mode==="local"?`<div class="banner">This hub is yours and is saved in this browser only. Download a backup from <a href="#backup">${esc(nm("backup"))}</a> now and then.</div>`:readOnly?'<div class="banner">View only.</div>':"";
-  $("view").innerHTML=note+(isProgView(view)?vPrograms():({overview:vOverview,snapshot:vSnapshot,inquiries:vInquiries,admin:vAdmin,faqs:vFaqs,notes:vNotes,backup:vBackup}[view]||vOverview)());
+  $("view").innerHTML=note+(isProgView(view)?vPrograms():({overview:vOverview,snapshot:vSnapshot,inquiries:vInquiries,inventory:vInventory,admin:vAdmin,faqs:vFaqs,notes:vNotes,backup:vBackup}[view]||vOverview)());
 }
 
 function vOverview(){
@@ -465,7 +469,7 @@ function vOverview(){
   let h=`<h2>${esc(nm("overview"))}</h2><div class="stats">
 <div class="stat good"><b>${enr}${tgt?` <small class="mut" style="font-size:.5em">of ${tgt}</small>`:""}</b><span>students enrolled in upcoming intakes</span></div>
 <div class="stat info"><b>${nxt?esc(fmt(nxt.start,"short")):"None"}</b><span>${nxt?"next start: "+esc(short(nxt.p)):"no upcoming start dates"}</span></div></div>`;
-  h+=`<div class="ov"><div><h3>Upcoming dates <span class="small mut" style="font-weight:400">${up.length} found</span></h3>${filters}`;
+  h+=invOverview()+`<div class="ov"><div><h3>Upcoming dates <span class="small mut" style="font-weight:400">${up.length} found</span></h3>${filters}`;
   h+=up.length?`<ul class="dates">`+(()=>{let k=0;return up.filter(x=>x.note||k++<+o.limit)})().map(x=>{const d=pd(x.d.date),n=days(x.d.date);
     if(x.note){const pn=short(data.programs.find(p=>p.id===x.note.prog));return`<li><div class="cal" style="background:var(--fill)"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what"><span class="pill">Due</span> ${esc(x.note.text.split("\n")[0].slice(0,120))} <span class="soon"${n<0?' style="color:var(--bad)"':""}>${n<0?"overdue":away(n)}</span></div><div class="sub">${x.note.by?"Note by "+esc(x.note.by):"My note"}${pn?" · "+esc(pn):""} · ${esc(fmt(x.d.date,"nodow"))} · <a href="#notes">open notes</a></div></div></li>`}
     return`<li><div class="cal"><small>${d.toLocaleDateString("en-CA",{month:"short"})}</small><b>${d.getDate()}</b></div><div><div class="what">${esc(x.d.label)} <span class="soon">${away(n)}</span></div><div class="sub"><span class="clip" title="${esc(x.p.name)}">${esc(ovName(x.p))}</span> · ${esc(x.i.name)} · ${esc(fmt(x.d.date,"nodow"))}</div></div></li>`}).join("")+`</ul>`+(up.filter(x=>!x.note).length>+o.limit?`<p class="hint">Showing ${o.limit} of ${up.filter(x=>!x.note).length} dates, plus all notes. Change "Show" to see more.</p>`:""):`<p class="empty">No dates match these filters.</p>`;
@@ -1041,6 +1045,7 @@ function vInquiries(){const ed=!readOnly;const W=data.inqWeeks;const weeks=Objec
 /* ---------- hooks ---------- */
 function extChange(t){const y=window.scrollY;const r=extChange0(t);if(r)requestAnimationFrame(()=>window.scrollTo(0,y));return r}
 function extChange0(t){
+  if(invChange(t))return true;
   if(t.id==="sn-y"){snapY=+t.value;render();return true}
   if(t.id==="sn-hide"){snapHide=t.checked;render();return true}
   if(t.id==="iw"){inqW=t.value;render();return true}
@@ -1056,6 +1061,7 @@ function extChange0(t){
   return false}
 function extAct(a,b){const y=window.scrollY;const r=extAct0(a,b);if(r&&a!=="snapxl")requestAnimationFrame(()=>window.scrollTo(0,y));return r}
 function extAct0(a,b){
+  if(invAct(a,b))return true;
   if(a==="settab"){setTab=b.dataset.v;render();return true}
   if(a==="snapxl"){snapXL().catch(()=>toast("Couldn't make the Excel file."));return true}
   if(a==="inqcopy"){copyText(b.dataset.v,"Email");return true}
@@ -1069,7 +1075,7 @@ function extAct0(a,b){
   if(a==="edtally"){reset();ui.edit="t"+b.dataset.id;render();return true}
   if(a==="deltally"){data.tally=data.tally.filter(t=>t.id!==b.dataset.id);reset();save(true);render();toast("Deleted");return true}
   return false}
-function extForm(f){const k=f.dataset.form;if(k!=="tally"&&k!=="tallyimp")return false;if(readOnly)return true;const v=n=>(f.elements[n]&&f.elements[n].value||"").trim();
+function extForm(f){if(invForm(f))return true;const k=f.dataset.form;if(k!=="tally"&&k!=="tallyimp")return false;if(readOnly)return true;const v=n=>(f.elements[n]&&f.elements[n].value||"").trim();
   if(k==="tally"){const name=v("prog");const p=data.programs.find(x=>codeName(x)===name||x.name===name)||matchProg(name);
     const body={pid:p?p.id:"",name:p?p.name:name,year:+v("year")||snapY,month:+v("month")||1,intake:v("intake"),dates:v("dates"),n:+v("n")||0,kind:f.elements.distant.checked?"distant":"regular",funded:v("funded"),src:"hand"};
     if(f.dataset.id)Object.assign(data.tally.find(t=>t.id===f.dataset.id)||{},body);else data.tally.push(Object.assign({id:uid()},body));snapY=body.year;reset();save(true);render();toast("Saved");return true}
@@ -1094,6 +1100,254 @@ function endDrag(e){if(!drag||(e&&e.pointerId!==drag.id))return;const {item,list
   if(list.dataset.sortlist==="drafts"){const sc=list.dataset.scope;const arr=sc==="admin"?data.admin:(data.programs.find(x=>x.id===sc)||{}).drafts;if(!arr)return;if(keys.join()===arr.map(d=>d.id).join())return;
     const next=keys.map(k=>arr.find(d=>d.id===k)).filter(Boolean).concat(arr.filter(d=>!keys.includes(d.id)));arr.splice(0,arr.length,...next);save(true);render();toast("Draft order saved")}}
 document.addEventListener("pointerup",endDrag);document.addEventListener("pointercancel",endDrag);
+/* ---------- inventory ---------- */
+const INV_BODY="Hello [Supplier],\n\nPlease find attached our lab supply order #[Order number] dated [Date].\n\n[Items]\n\nPlease let us know the expected delivery date. Thank you!";
+const I=()=>data.inv;const itemById=id=>I().items.find(x=>x.id===id);const supById=id=>I().suppliers.find(x=>x.id===id);
+const n2=v=>Math.round((+v||0)*100)/100;const money=v=>"$"+(+v||0).toLocaleString("en-CA",{minimumFractionDigits:2,maximumFractionDigits:2});
+const qtxt=v=>v==null?"—":String(n2(v));const qOf=d=>Math.floor(pd(d).getMonth()/3);
+let invTab="items",invQ="",invTag="",invLow=false,invArch=false,invOpenOnly=true,rpYear=null,rpTag="",pendPhoto=null;
+const photoCache={};
+const byInp=()=>`<div><label for="by-in">Your initials</label><input id="by-in" name="by" maxlength="4" required value="${esc(myInit())}" placeholder="e.g. GP" style="text-transform:uppercase"></div>`;
+const takeBy=f=>{const b=(f.elements.by&&f.elements.by.value||"").toUpperCase().replace(/[^A-Z0-9.\-]/g,"").slice(0,4);if(b)try{localStorage.setItem("ph-initials",b)}catch(x){}return b};
+const nowAt=()=>Date.now();
+/* photos: kept beside the hub record when signed in, inside it otherwise */
+function getPhoto(id){if(!id)return null;const inl=I().photos[id];if(inl)return inl;const c=photoCache[id];if(c&&c!=="loading"&&c!=="missing")return c;
+  if(!c&&mode==="cloud"&&doc){photoCache[id]="loading";doc.collection("photos").doc(id).get().then(s=>{photoCache[id]=s.exists?s.data():"missing";const p=photoCache[id];if(p&&p.d)document.querySelectorAll(`img[data-ph="${id}"]`).forEach(im=>{im.src=p.d;im.hidden=false;const nx=im.nextElementSibling;if(nx&&nx.classList.contains("noph"))nx.remove()})}).catch(()=>{photoCache[id]="missing"})}return null}
+async function ensurePhoto(id){if(!id)return null;const p=getPhoto(id);if(p)return p;for(let k=0;k<40&&photoCache[id]==="loading";k++)await new Promise(r=>setTimeout(r,100));const q=photoCache[id];return q&&q.d?q:null}
+async function putPhoto(ph){const id=uid();if(mode==="cloud"&&doc){try{await doc.collection("photos").doc(id).set(ph);photoCache[id]=ph;return id}catch(e){}}
+  const small=await shrink(ph.d,260,.62);I().photos[id]=small;return id}
+function dropPhoto(id){if(!id)return;delete I().photos[id];delete photoCache[id];if(mode==="cloud"&&doc)doc.collection("photos").doc(id).delete().catch(()=>{})}
+function shrink(src,max,q){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res({d:c.toDataURL("image/jpeg",q),w:c.width,h:c.height})};im.onerror=rej;im.src=src})}
+const phImg=(id,cls)=>{const p=getPhoto(id);return id?`<img data-ph="${id}" class="${cls}" alt=""${p?` src="${p.d}"`:" hidden"}>${p?"":`<span class="${cls} noph">…</span>`}`:`<span class="${cls} noph">No photo</span>`};
+
+/* stock maths: last count + deliveries since */
+function stockInfo(it){const ev=[];I().counts.forEach(c=>{const v=c.q&&c.q[it.id];if(v!=null&&v!=="")ev.push({t:"c",date:c.date,at:c.at||0,v:+v})});
+  I().deliveries.forEach(d=>{const l=d.lines&&d.lines[it.id];if(l&&+l.q)ev.push({t:"d",date:d.date,at:d.at||0,v:+l.q})});
+  ev.sort((a,b)=>a.date.localeCompare(b.date)||a.at-b.at);let stock=null,lastC=null,recv=0;const iv=[];
+  ev.forEach(e=>{if(e.t==="d"){stock=(stock||0)+e.v;recv+=e.v}else{if(lastC){const days_=(pd(e.date)-pd(lastC.date))/864e5;iv.push({from:lastC.date,to:e.date,used:Math.max(0,lastC.v+recv-e.v),days:days_})}stock=e.v;lastC=e;recv=0}});
+  const rec=iv.filter(x=>x.days>0).slice(-3);const sd=rec.reduce((a,x)=>a+x.days,0),su=rec.reduce((a,x)=>a+x.used,0);const rate=sd>=14&&su>0?su/sd*30.44:null;
+  return{stock:stock==null?null:n2(stock),lastCount:lastC?lastC.date:null,iv,rate,left:rate&&stock!=null?stock/rate:null}}
+function lvl(it,si){if(si.stock==null)return"";const r=it.reorder;if(r!==""&&r!=null&&!isNaN(+r)){if(si.stock<=+r)return"bad";if(si.stock<=+r+1)return"warn";return"good"}
+  if(si.left!=null)return si.left<1?"bad":si.left<2?"warn":"good";return""}
+const LV={bad:"Low",warn:"Getting low",good:"OK"};
+function sugQty(it,si){const s=si.stock||0;if(it.keep!==""&&it.keep!=null&&!isNaN(+it.keep)&&+it.keep>0)return Math.max(0,Math.ceil(+it.keep-s));if(si.rate)return Math.max(0,Math.ceil(si.rate*3-s));const r=+it.reorder;if(it.reorder!==""&&!isNaN(r)&&s<=r)return Math.max(1,Math.ceil(r*2-s));return 0}
+const allTags=()=>[...new Set(I().items.flatMap(i=>i.tags))].sort(natCmp);
+const activeItems=()=>I().items.filter(i=>!i.archived).sort((a,b)=>natCmp(a.name,b.name));
+const unitOf=it=>it.unit||"unit";
+
+function vInventory(){const ed=!readOnly;const T=[["items","Items"],["count","Count"],["orders","Orders"],["deliv","Deliveries"],["reports","Spending and usage"],["setup","Suppliers and setup"]];
+  let h=`<h2>${esc(nm("inventory"))}</h2><div class="subnav" role="group" aria-label="Inventory sections">${T.map(([k,l])=>`<button type="button" data-act="invtab" data-v="${k}" aria-pressed="${k===invTab}">${l}</button>`).join("")}</div>`;
+  return h+({items:invItems,count:invCount,orders:invOrders,deliv:invDelivs,reports:invReports,setup:invSetup}[invTab]||invItems)(ed)}
+
+function itemForm(it){const tags=allTags();const sp=I().suppliers;
+  return`<form class="form" data-form="invitem" data-id="${it.id||""}"><div class="grid2"><div><label for="ii-n">Item name</label><input id="ii-n" name="name" required value="${esc(it.name||"")}" placeholder="e.g. Vacutainer tubes, lavender top"></div><div><label for="ii-b">Brand</label><input id="ii-b" name="brand" value="${esc(it.brand||"")}" placeholder="e.g. BD"></div></div>
+<div class="grid3"><div><label for="ii-c">Item or catalogue #</label><input id="ii-c" name="code" value="${esc(it.code||"")}"></div><div><label for="ii-u">Unit you count and order in</label><input id="ii-u" name="unit" value="${esc(it.unit||"")}" placeholder="e.g. box of 100"></div><div><label for="ii-s">Supplier</label><select id="ii-s" name="supplier"><option value="">None</option>${sp.map(s=>`<option value="${s.id}"${s.id===it.supplier?" selected":""}>${esc(s.name)}</option>`).join("")}</select></div></div>
+<label>Tags</label><div class="row">${tags.map(t=>`<label class="chk"><input type="checkbox" name="tag" value="${esc(t)}"${(it.tags||[]).includes(t)?" checked":""}> ${esc(t)}</label>`).join("")}<input name="newtags" placeholder="${tags.length?"Add another tag":"e.g. Phlebotomy, IM, General"}" style="width:auto;flex:1 1 200px"></div><p class="hint" style="margin:4px 0 0">Separate new tags with commas. An item can have several.</p>
+<div class="grid3"><div><label for="ii-r">Reorder at (units)</label><input id="ii-r" name="reorder" type="number" step="any" min="0" value="${esc(it.reorder??"")}" placeholder="e.g. 3"></div><div><label for="ii-k">Keep on hand (optional)</label><input id="ii-k" name="keep" type="number" step="any" min="0" value="${esc(it.keep??"")}" placeholder="used for order suggestions"></div>${it.id?"":`<div><label for="ii-0">How many you have now</label><input id="ii-0" name="start" type="number" step="any" min="0" placeholder="e.g. 4.5"></div>`}</div>
+${it.id?"":`<div class="grid3">${byInp()}</div>`}
+<label>Photo</label><div class="row" style="align-items:center"><span id="ii-prev">${pendPhoto?`<img class="thumb" src="${pendPhoto.d}" alt="">`:phImg(it.photo,"thumb")}</span><label class="btn" for="ii-photo" style="margin:0;cursor:pointer">${it.photo||pendPhoto?"Change photo":"Add photo"}</label><input type="file" id="ii-photo" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0">${it.photo?`<label class="chk"><input type="checkbox" name="nophoto"> Remove photo</label>`:""}</div>
+<label for="ii-no">Notes (optional)</label><input id="ii-no" name="notes" value="${esc(it.notes||"")}">
+<div class="row end" style="margin-top:12px">${it.id?(ui.confirm==="ia"+it.id?`<button type="button" class="danger" data-act="invarch" data-id="${it.id}">${it.archived?"Restore":"Archive"}</button>`:`<button type="button" class="ghost" data-act="ask" data-w="ia${it.id}">${it.archived?"Restore":"Archive"}</button>`):""}<span style="flex:1"></span><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save item</button></div></form>`}
+
+function invItems(ed){const tags=allTags();let list=I().items.filter(i=>invArch?i.archived:!i.archived).sort((a,b)=>natCmp(a.name,b.name));
+  const q=invQ.trim().toLowerCase();if(q)list=list.filter(i=>[i.name,i.brand,i.code,i.unit,...i.tags].join(" ").toLowerCase().includes(q));if(invTag)list=list.filter(i=>i.tags.includes(invTag));
+  const info=new Map(list.map(i=>[i.id,stockInfo(i)]));if(invLow)list=list.filter(i=>/bad|warn/.test(lvl(i,info.get(i.id))));
+  const low=activeItems().filter(i=>lvl(i,stockInfo(i))==="bad").length;
+  let h=`<div class="row" style="margin-bottom:10px"><input id="inv-q" value="${esc(invQ)}" placeholder="Search items" style="flex:1 1 200px;width:auto"><select id="inv-tag" style="width:auto"><option value="">All tags</option>${tags.map(t=>`<option${t===invTag?" selected":""}>${esc(t)}</option>`).join("")}</select><label class="chk"><input type="checkbox" id="inv-low"${invLow?" checked":""}> Low stock only${low?` (${low})`:""}</label><label class="chk"><input type="checkbox" id="inv-arch"${invArch?" checked":""}> Archived</label>${ed?`<button class="pri" data-act="invnew">+ Add item</button>`:""}</div>`;
+  if(ui.edit==="ii:new")h+=itemForm({tags:invTag?[invTag]:[]});
+  h+=`<div class="legend"><span><i style="background:var(--good)"></i>OK</span><span><i style="background:var(--warn)"></i>within 1 unit of reorder level</span><span><i style="background:var(--bad)"></i>at or below reorder level</span></div>`;
+  if(!list.length)return h+`<p class="empty">${I().items.length?"No items match.":"No items yet. Add your lab supplies with a photo, the unit you count in, and when to reorder."}</p>`;
+  return h+`<div class="invgrid">`+list.map(it=>{if(ui.edit==="ii:"+it.id)return`<div style="grid-column:1/-1">${itemForm(it)}</div>`;const si=info.get(it.id),lv=lvl(it,si);
+    return`<article class="invcard${lv?" lv-"+lv:""}">${phImg(it.photo,"invph")}<div class="ib"><b>${esc(it.name)}</b><div class="small mut">${[it.brand,it.code?"#"+it.code:""].filter(Boolean).map(esc).join(" · ")||"&nbsp;"}</div>
+<div class="row" style="margin:8px 0 4px;gap:6px;align-items:baseline"><b style="font-size:26px">${qtxt(si.stock)}</b><span class="small mut">× ${esc(unitOf(it))} on hand</span></div>
+<div class="row" style="gap:4px">${lv?`<span class="pill ${lv}">${LV[lv]}</span>`:""}${si.left!=null?`<span class="pill">≈ ${si.left<10?n2(Math.round(si.left*10)/10):Math.round(si.left)} months left</span>`:""}${it.tags.map(t=>`<span class="pill info">${esc(t)}</span>`).join("")}</div>
+<div class="small mut" style="margin-top:6px">${it.reorder!==""&&it.reorder!=null?"Reorder at "+n2(it.reorder)+" · ":""}${si.lastCount?"Counted "+esc(fmt(si.lastCount,"short")):"Not counted yet"}${it.supplier&&supById(it.supplier)?" · "+esc(supById(it.supplier).name):""}</div>
+${ed?`<div class="row end" style="margin-top:4px"><button class="ghost" data-act="invedit" data-id="${it.id}">Edit</button></div>`:""}</div></article>`}).join("")+`</div>`}
+
+function invCount(ed){const tags=allTags();let list=activeItems();if(invTag)list=list.filter(i=>i.tags.includes(invTag));
+  let h=`<p class="mut" style="margin-top:-6px">Count what's on the shelf in each item's unit. Half boxes are fine (2.5). Leave an item blank if you didn't count it. Usage is worked out from the change between counts, minus deliveries.</p>`;
+  if(!I().items.length)return h+`<p class="empty">Add items first.</p>`;
+  if(ed)h+=`<form class="form" data-form="invcount"><div class="grid3"><div><label for="ct-d">Count date</label><input id="ct-d" name="date" type="date" required value="${iso(today())}"></div>${byInp()}<div><label for="inv-tag">Show</label><select id="inv-tag"><option value="">All items</option>${tags.map(t=>`<option${t===invTag?" selected":""}>${esc(t)}</option>`).join("")}</select></div></div>
+<div style="overflow-x:auto;margin-top:10px"><table><thead><tr><th></th><th>Item</th><th class="num">Last known</th><th style="width:140px">Count now</th></tr></thead><tbody>${list.map(it=>{const si=stockInfo(it),lv=lvl(it,si);return`<tr><td style="width:56px">${phImg(it.photo,"thumb")}</td><td><b>${esc(it.name)}</b><br><span class="small mut">${esc([it.brand,unitOf(it)].filter(Boolean).join(" · "))}</span></td><td class="num">${qtxt(si.stock)}${lv?` <span class="pill ${lv}">${LV[lv]}</span>`:""}</td><td><input name="c-${it.id}" type="number" step="any" min="0" inputmode="decimal" aria-label="Count for ${esc(it.name)}"></td></tr>`}).join("")}</tbody></table></div>
+<div class="row end" style="margin-top:12px"><button class="pri">Save count</button></div></form>`;
+  const past=I().counts.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.at-a.at);
+  h+=`<section class="box"><h3>Past counts</h3>${past.length?`<table><tbody>${past.slice(0,40).map(c=>`<tr><td>${esc(fmt(c.date,"short"))}</td><td>${Object.keys(c.q||{}).length} item${Object.keys(c.q||{}).length===1?"":"s"}</td><td>${c.by?`<span class="who" style="${whoCol(c.by)}">${esc(c.by)}</span>`:""}</td><td class="num">${ed?(ui.confirm==="ic"+c.id?`<button class="danger" data-act="invdelcount" data-id="${c.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="ic${c.id}">Delete</button>`):""}</td></tr>`).join("")}</tbody></table>`:`<p class="empty">No counts yet.</p>`}</section>`;
+  return h}
+
+const ST={draft:["Draft",""],sent:["Sent","info"],received:["Received","good"],cancelled:["Cancelled","bad"]};
+function orderForm(o){const sp=I().suppliers;const only=o.supplier&&ui.ioOnly!==false;let list=activeItems();if(only)list=list.filter(i=>i.supplier===o.supplier||(o.lines||{})[i.id]);
+  return`<form class="form" data-form="invorder" data-id="${o.id||""}"><div class="grid3"><div><label for="io-sup">Supplier</label><select id="io-sup" name="supplier"><option value="">Choose…</option>${sp.map(s=>`<option value="${s.id}"${s.id===o.supplier?" selected":""}>${esc(s.name)}</option>`).join("")}</select></div>${byInp()}<div><label for="io-n">Note on the order (optional)</label><input id="io-n" name="note" value="${esc(o.note||"")}" placeholder="e.g. Please deliver by Dec 10"></div></div>
+${o.supplier?`<label class="chk" style="margin-top:8px"><input type="checkbox" id="io-only"${only?" checked":""}> Only show this supplier's items</label>`:""}
+<div class="row" style="margin-top:8px"><button type="button" data-act="invsug">Fill suggested amounts</button><span class="small mut">Suggestions top you up to "keep on hand", or about 3 months of use once you have counts.</span></div>
+<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th></th><th>Item</th><th class="num">On hand</th><th class="num">Suggested</th><th style="width:120px">Order</th></tr></thead><tbody>${list.map(it=>{const si=stockInfo(it),lv=lvl(it,si),sg=sugQty(it,si);const v=(o.lines||{})[it.id];return`<tr><td style="width:56px">${phImg(it.photo,"thumb")}</td><td><b>${esc(it.name)}</b><br><span class="small mut">${esc([it.brand,it.code?"#"+it.code:"",unitOf(it)].filter(Boolean).join(" · "))}</span></td><td class="num">${qtxt(si.stock)}${lv?` <span class="pill ${lv}">${LV[lv]}</span>`:""}</td><td class="num">${sg||""}</td><td><input name="q-${it.id}" type="number" step="any" min="0" value="${v!=null?esc(v):""}" data-sug="${sg}" aria-label="Order amount for ${esc(it.name)}"></td></tr>`}).join("")||`<tr><td colspan="5" class="empty">No items for this supplier yet. Untick "Only show this supplier's items" or set the supplier on your items.</td></tr>`}</tbody></table></div>
+<div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save order</button></div></form>`}
+function invOrders(ed){let h=`<p class="mut" style="margin-top:-6px">Build an order, then email it to the supplier with the PDF attached and your approvers in CC. Orders stay editable after they're sent. Only what you record as delivered changes your stock and spending.</p>`;
+  if(ed)h+=ui.edit==="io:new"?orderForm(ui.ioDraft||{}):`<div class="row"><button class="pri" data-act="invneworder">+ New order</button><span style="flex:1"></span><label class="chk"><input type="checkbox" id="io-open"${invOpenOnly?" checked":""}> Open orders only</label></div>`;
+  const list=I().orders.filter(o=>!invOpenOnly||o.status==="draft"||o.status==="sent").sort((a,b)=>b.created-a.created);
+  if(!list.length)return h+`<p class="empty" style="margin-top:12px">${I().orders.length?"No open orders.":"No orders yet."}</p>`;
+  return h+`<div class="drafts" style="margin-top:12px">`+list.map(o=>{if(ui.edit==="io:"+o.id)return orderForm(ui.ioTemp&&ui.ioTemp.id===o.id?ui.ioTemp:o);const s=supById(o.supplier);const lines=Object.entries(o.lines||{}).filter(([,q])=>+q>0);const [sl,sc]=ST[o.status]||ST.draft;
+    return`<article class="draft"><div class="row"><b style="flex:1">Order #${o.no} · ${esc(s?s.name:"No supplier")} <span class="pill ${sc}">${sl}</span></b><span class="small mut">${esc(fmt(iso(new Date(o.created)),"short"))}${o.by?` · <span class="who" style="${whoCol(o.by)};width:28px;height:28px;font-size:11px">${esc(o.by)}</span>`:""}${o.sentAt?" · sent "+esc(fmt(o.sentAt,"short"))+(o.sentBy?" by "+esc(o.sentBy):""):""}</span></div>
+<p class="small" style="margin:6px 0">${lines.map(([id,q])=>{const it=itemById(id);return esc((it?it.name:"(removed item)")+" × "+n2(q))}).join(" · ")||'<span class="mut">No items yet</span>'}${o.note?`<br><span class="mut">Note: ${esc(o.note)}</span>`:""}</p>
+${ui.edit==="is:"+o.id?`<form class="inl" data-form="invsent" data-id="${o.id}" style="max-width:420px"><input name="by" maxlength="4" required value="${esc(myInit())}" placeholder="Your initials" aria-label="Your initials" style="text-transform:uppercase"><button class="pri">Mark as sent</button><button type="button" class="ghost" data-act="cancel">Cancel</button></form>`:""}
+<div class="row" style="margin-top:4px"><button class="pri" data-act="invmail" data-id="${o.id}"${lines.length?"":" disabled"}>Email with PDF</button><button data-act="invpdf" data-id="${o.id}"${lines.length?"":" disabled"}>Download PDF</button><button class="ghost" data-act="invcopy" data-id="${o.id}">Copy email text</button>${ed&&o.status!=="received"&&o.status!=="cancelled"?`<button class="ghost" data-act="invedorder" data-id="${o.id}">Edit</button>${o.status==="draft"?`<button class="ghost" data-act="invsent" data-id="${o.id}">Mark sent</button>`:""}<button class="ghost" data-act="invrecv" data-id="${o.id}">Record delivery</button>${ui.confirm==="ox"+o.id?`<button class="danger" data-act="invcancel" data-id="${o.id}">Cancel order</button>`:`<button class="ghost" data-act="ask" data-w="ox${o.id}">Cancel order</button>`}`:""}${ed&&o.status!=="received"?(ui.confirm==="od"+o.id?`<button class="danger" data-act="invdelorder" data-id="${o.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="od${o.id}">Delete</button>`):""}</div></article>`}).join("")+`</div><p class="hint">"Email with PDF" downloads an email file. Open it and it starts a new email in Outlook on your computer with the supplier in To, your approvers in CC and the PDF attached. In Outlook on the web or a phone, use Download PDF and Copy email text instead.</p>`}
+
+function delivForm(d){const sp=I().suppliers;const ord=d.order&&I().orders.find(o=>o.id===d.order);const S=I().settings;let list=activeItems();const L=d.lines||{};
+  list.sort((a,b)=>((L[b.id]?1:0)-(L[a.id]?1:0))||((b.supplier===d.supplier?1:0)-(a.supplier===d.supplier?1:0))||natCmp(a.name,b.name));
+  const opens=I().orders.filter(o=>o.status==="sent"||o.status==="draft"||o.id===d.order);
+  return`<form class="form" data-form="invdeliv" data-id="${d.id||""}"><div class="grid3"><div><label for="dv-d">Date received</label><input id="dv-d" name="date" type="date" required value="${esc(d.date||iso(today()))}"></div><div><label for="dv-s">Supplier</label><select id="dv-s" name="supplier"><option value="">Choose…</option>${sp.map(s=>`<option value="${s.id}"${s.id===d.supplier?" selected":""}>${esc(s.name)}</option>`).join("")}</select></div>${byInp()}</div>
+<div class="grid3"><div><label for="dv-o">For order (optional)</label><select id="dv-o" name="order"><option value="">No order</option>${opens.map(o=>`<option value="${o.id}"${o.id===d.order?" selected":""}>#${o.no} · ${esc((supById(o.supplier)||{}).name||"")}</option>`).join("")}</select></div><div><label for="dv-i">Invoice # (optional)</label><input id="dv-i" name="inv" value="${esc(d.inv||"")}"></div><div><label for="dv-n">Note (optional)</label><input id="dv-n" name="note" value="${esc(d.note||"")}"></div></div>
+<p class="hint" style="margin:8px 0 0">Enter what actually arrived${ord?" (filled in from the order; change anything that's different)":""}. Unit prices are optional; add them if you want spending by tag.</p>
+<div style="overflow-x:auto;margin-top:6px"><table><thead><tr><th></th><th>Item</th><th style="width:110px">Received</th><th style="width:120px">Unit price $</th></tr></thead><tbody>${list.map(it=>{const l=L[it.id]||{};return`<tr><td style="width:56px">${phImg(it.photo,"thumb")}</td><td><b>${esc(it.name)}</b><br><span class="small mut">${esc([it.brand,unitOf(it)].filter(Boolean).join(" · "))}</span></td><td><input name="d-${it.id}" type="number" step="any" min="0" value="${l.q!=null?esc(l.q):""}" data-dv aria-label="Received ${esc(it.name)}"></td><td><input name="p-${it.id}" type="number" step="any" min="0" value="${l.p!=null&&l.p!==""?esc(l.p):""}" data-dv aria-label="Unit price ${esc(it.name)}"></td></tr>`}).join("")}</tbody></table></div>
+<div class="grid3" style="margin-top:10px;max-width:760px"><div><label for="dv-sub">Subtotal $</label><input id="dv-sub" name="sub" type="number" step="0.01" min="0" value="${esc(d.sub??"")}" data-dv${d.id?' data-manual="1"':""}></div><div><label for="dv-hst">HST $ <span class="mut" style="font-weight:400">(${n2(S.hst)}%)</span></label><input id="dv-hst" name="hst" type="number" step="0.01" min="0" value="${esc(d.hst??"")}" data-dv${d.id?' data-manual="1"':""}></div><div><label for="dv-sh">Shipping $</label><input id="dv-sh" name="ship" type="number" step="0.01" min="0" value="${esc(d.ship??"")}" data-dv></div></div>
+<p style="margin:10px 0 0;font-size:18px"><b>Total: <span id="dv-tot">${money((+d.sub||0)+(+d.hst||0)+(+d.ship||0))}</span></b> <span class="small mut">Type the invoice's subtotal and HST to match it exactly.</span></p>
+<div class="row end" style="margin-top:12px"><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save delivery</button></div></form>`}
+function invDelivs(ed){let h=`<p class="mut" style="margin-top:-6px">Record what arrived and the invoice amounts. This is what updates stock and spending.</p>`;
+  if(ed)h+=ui.edit==="id:new"?delivForm(ui.dvDraft||{}):`<button class="pri" data-act="invnewdeliv">+ Record delivery</button>`;
+  const list=I().deliveries.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.at-a.at);
+  if(!list.length)return h+`<p class="empty" style="margin-top:12px">No deliveries yet.</p>`;
+  return h+`<div style="overflow-x:auto;margin-top:12px"><table><thead><tr><th>Date</th><th>Supplier</th><th>Items</th><th class="num">Total</th><th></th><th></th></tr></thead><tbody>${list.map(d=>ui.edit==="id:"+d.id?`<tr><td colspan="6">${delivForm(ui.dvTemp&&ui.dvTemp.id===d.id?ui.dvTemp:d)}</td></tr>`:`<tr><td style="white-space:nowrap">${esc(fmt(d.date,"short"))}${d.inv?`<br><span class="small mut">Inv ${esc(d.inv)}</span>`:""}</td><td>${esc((supById(d.supplier)||{}).name||"—")}${d.order?`<br><span class="small mut">Order #${esc((I().orders.find(o=>o.id===d.order)||{}).no||"")}</span>`:""}</td><td class="small">${Object.entries(d.lines||{}).filter(([,l])=>+l.q).map(([id,l])=>esc(((itemById(id)||{}).name||"(removed)")+" × "+n2(l.q))).join("<br>")}</td><td class="num"><b>${money(d.total)}</b><br><span class="small mut">HST ${money(d.hst)}</span></td><td>${d.by?`<span class="who" style="${whoCol(d.by)}">${esc(d.by)}</span>`:""}</td><td class="num">${ed?`<button class="ghost" data-act="invedeliv" data-id="${d.id}">Edit</button>${ui.confirm==="dd"+d.id?`<button class="danger" data-act="invdeldeliv" data-id="${d.id}">Delete</button>`:`<button class="ghost" data-act="ask" data-w="dd${d.id}">Delete</button>`}`:""}</td></tr>`).join("")}</tbody></table></div>`}
+
+function invYears(){const s=new Set([today().getFullYear()]);I().deliveries.forEach(d=>s.add(+d.date.slice(0,4)));I().counts.forEach(c=>s.add(+c.date.slice(0,4)));return[...s].sort((a,b)=>b-a)}
+function spendQ(y,tag){const Q=[0,1,2,3].map(()=>({sub:0,hst:0,ship:0,total:0,tag:0}));I().deliveries.forEach(d=>{if(+d.date.slice(0,4)!==y)return;const q=Q[qOf(d.date)];q.sub+=+d.sub||0;q.hst+=+d.hst||0;q.ship+=+d.ship||0;q.total+=+d.total||0;
+  if(tag)Object.entries(d.lines||{}).forEach(([id,l])=>{const it=itemById(id);if(it&&it.tags.includes(tag)&&l.p!==""&&l.p!=null)q.tag+=(+l.q||0)*(+l.p||0)})});return Q}
+function usageQ(y,tag){return I().items.filter(i=>!tag||i.tags.includes(tag)).map(it=>{const si=stockInfo(it);const Q=[0,0,0,0];si.iv.forEach(x=>{if(+x.to.slice(0,4)===y)Q[qOf(x.to)]+=x.used});return{it,si,Q,tot:Q.reduce((a,b)=>a+b,0)}}).filter(r=>r.tot>0||!r.it.archived).sort((a,b)=>b.tot-a.tot||natCmp(a.it.name,b.it.name))}
+function invHistory(y){const H=[];I().counts.forEach(c=>{if(+c.date.slice(0,4)===y)H.push({date:c.date,at:c.at,kind:"Count",what:Object.keys(c.q||{}).length+" item"+(Object.keys(c.q||{}).length===1?"":"s")+" counted",by:c.by})});
+  I().deliveries.forEach(d=>{if(+d.date.slice(0,4)===y)H.push({date:d.date,at:d.at,kind:"Delivery",what:((supById(d.supplier)||{}).name||"No supplier")+" · "+Object.values(d.lines||{}).filter(l=>+l.q).length+" items · "+money(d.total),by:d.by})});
+  I().orders.forEach(o=>{const dc=iso(new Date(o.created));if(+dc.slice(0,4)===y)H.push({date:dc,at:o.created,kind:"Order created",what:"#"+o.no+" · "+((supById(o.supplier)||{}).name||""),by:o.by});if(o.sentAt&&+o.sentAt.slice(0,4)===y)H.push({date:o.sentAt,at:o.sentStamp||0,kind:"Order sent",what:"#"+o.no+" · "+((supById(o.supplier)||{}).name||""),by:o.sentBy})});
+  return H.sort((a,b)=>b.date.localeCompare(a.date)||(b.at||0)-(a.at||0))}
+function invReports(){const ys=invYears();if(!rpYear||!ys.includes(rpYear))rpYear=ys[0];const tags=allTags();if(rpTag&&!tags.includes(rpTag))rpTag="";
+  const Q=spendQ(rpYear,rpTag),T=Q.reduce((a,q)=>({sub:a.sub+q.sub,hst:a.hst+q.hst,ship:a.ship+q.ship,total:a.total+q.total,tag:a.tag+q.tag}),{sub:0,hst:0,ship:0,total:0,tag:0});const U=usageQ(rpYear,rpTag);const H=invHistory(rpYear);
+  return`<div class="row" style="margin-bottom:6px"><label for="rp-year" style="margin:0">Year</label><select id="rp-year" style="width:auto">${ys.map(y=>`<option${y===rpYear?" selected":""}>${y}</option>`).join("")}</select><label for="rp-tag" style="margin:0">Tag</label><select id="rp-tag" style="width:auto"><option value="">All items</option>${tags.map(t=>`<option${t===rpTag?" selected":""}>${esc(t)}</option>`).join("")}</select><span style="flex:1"></span><button class="pri" data-act="invxl">Download Excel</button></div>
+<div class="stats"><div class="stat info"><b>${money(T.total)}</b><span>spent in ${rpYear}, with HST and shipping</span></div><div class="stat"><b>${money(T.sub)}</b><span>before tax</span></div>${rpTag?`<div class="stat violet"><b>${money(T.tag)}</b><span>on items tagged ${esc(rpTag)} (from unit prices, before tax)</span></div>`:""}</div>
+<h3 style="margin-top:18px">Spending by quarter</h3><div style="overflow-x:auto"><table><thead><tr><th>Quarter</th><th class="num">Subtotal</th><th class="num">HST</th><th class="num">Shipping</th><th class="num">Total</th>${rpTag?`<th class="num">Tagged ${esc(rpTag)}</th>`:""}</tr></thead><tbody>${Q.map((q,k)=>`<tr><td>Q${k+1} <span class="small mut">${["Jan–Mar","Apr–Jun","Jul–Sep","Oct–Dec"][k]}</span></td><td class="num">${money(q.sub)}</td><td class="num">${money(q.hst)}</td><td class="num">${money(q.ship)}</td><td class="num"><b>${money(q.total)}</b></td>${rpTag?`<td class="num">${money(q.tag)}</td>`:""}</tr>`).join("")}</tbody><tfoot><tr><td><b>${rpYear}</b></td><td class="num"><b>${money(T.sub)}</b></td><td class="num"><b>${money(T.hst)}</b></td><td class="num"><b>${money(T.ship)}</b></td><td class="num"><b>${money(T.total)}</b></td>${rpTag?`<td class="num"><b>${money(T.tag)}</b></td>`:""}</tr></tfoot></table></div>
+${rpTag?`<p class="hint">The tagged column only includes deliveries where you entered unit prices. Shared items (like bandaids tagged Phlebotomy and IM) appear under each tag but are counted once in the totals.</p>`:""}
+<h3 style="margin-top:22px">Usage by quarter <span class="small mut" style="font-weight:400">units used, worked out from your counts</span></h3><div style="overflow-x:auto"><table><thead><tr><th>Item</th><th class="num">Q1</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Q4</th><th class="num">Year</th><th class="num">Per month now</th></tr></thead><tbody>${U.map(r=>`<tr><td><b>${esc(r.it.name)}</b><br><span class="small mut">${esc(unitOf(r.it))}</span></td>${r.Q.map(v=>`<td class="num">${v?n2(v):""}</td>`).join("")}<td class="num"><b>${r.tot?n2(r.tot):""}</b></td><td class="num">${r.si.rate?n2(Math.round(r.si.rate*10)/10):""}</td></tr>`).join("")||`<tr><td colspan="7" class="empty">Usage shows after your second count.</td></tr>`}</tbody></table></div>
+<h3 style="margin-top:22px">History</h3>${H.length?`<div style="overflow-x:auto"><table><tbody>${H.map(x=>`<tr><td style="white-space:nowrap">${esc(fmt(x.date,"short"))}</td><td><span class="pill ${x.kind==="Delivery"?"good":x.kind==="Count"?"violet":"info"}">${x.kind}</span></td><td>${esc(x.what)}</td><td>${x.by?`<span class="who" style="${whoCol(x.by)}">${esc(x.by)}</span>`:""}</td></tr>`).join("")}</tbody></table></div>`:`<p class="empty">Nothing recorded in ${rpYear}.</p>`}`}
+
+function invSetup(ed){const S=I().settings;const sp=I().suppliers;
+  const sf=s=>`<form class="form" data-form="invsup" data-id="${s.id||""}"><div class="grid3"><div><label for="sp-n">Supplier name</label><input id="sp-n" name="name" required value="${esc(s.name||"")}"></div><div><label for="sp-e">Order email</label><input id="sp-e" name="email" type="email" value="${esc(s.email||"")}"></div><div><label for="sp-c">Contact name (for the greeting)</label><input id="sp-c" name="contact" value="${esc(s.contact||"")}"></div></div><div class="row end" style="margin-top:10px">${s.id?(ui.confirm==="sx"+s.id?`<button type="button" class="danger" data-act="invdelsup" data-id="${s.id}">Delete supplier</button>`:`<button type="button" class="ghost" data-act="ask" data-w="sx${s.id}">Delete</button>`):""}<span style="flex:1"></span><button type="button" class="ghost" data-act="cancel">Cancel</button><button class="pri">Save supplier</button></div></form>`;
+  return`<section class="box" style="margin-top:0;border:0;padding:0"><h3>Suppliers</h3>${sp.map(s=>ui.edit==="sp:"+s.id?sf(s):`<div class="row file" style="margin-bottom:6px"><b style="flex:1">${esc(s.name)}</b><span class="small mut">${esc(s.email||"no email")}</span>${ed?`<button class="ghost" data-act="invedsup" data-id="${s.id}">Edit</button>`:""}</div>`).join("")||'<p class="empty">No suppliers yet.</p>'}${ed?(ui.edit==="sp:new"?sf({}):`<button class="pri" data-act="invnewsup">+ Add supplier</button>`):""}</section>
+<section class="box"><h3>Order email</h3><form class="form" data-form="invset"><label for="is-cc">Always CC (approvers)</label><input id="is-cc" name="cc" value="${esc(S.cc)}" placeholder="name@college.ca; other@college.ca"><label for="is-su">Subject</label><input id="is-su" name="subject" value="${esc(S.subject)}"><label for="is-b">Message</label><textarea id="is-b" name="body" style="min-height:170px">${esc(S.body)}</textarea><p class="hint">Fill-ins: [Supplier], [Date], [Order number], [Items], [Note].</p>
+<div class="grid3"><div><label for="is-o">Name at the top of the PDF</label><input id="is-o" name="org" value="${esc(S.org)}" placeholder="${esc(data.settings.name||"Program Hub")}"></div><div><label for="is-h">HST %</label><input id="is-h" name="hst" type="number" step="0.01" min="0" value="${esc(S.hst)}"></div><div><label for="is-ce">Remind me to count every (days)</label><input id="is-ce" name="countEvery" type="number" min="7" value="${esc(S.countEvery)}"></div></div>
+<label class="chk" style="margin-top:10px"><input type="checkbox" name="remind"${S.remind?" checked":""}> Show low stock and count reminders on the Overview</label>
+<div class="row end" style="margin-top:12px"><button class="pri"${ed?"":" disabled"}>Save</button></div></form></section>`}
+
+function invOverview(){const S=I().settings;const items=activeItems();if(!S.remind||!items.length)return"";const low=items.filter(i=>/bad|warn/.test(lvl(i,stockInfo(i))));
+  const last=I().counts.map(c=>c.date).sort().pop();const ago=last?-days(last):null;const due=!last||ago>=+S.countEvery;const sent=I().orders.filter(o=>o.status==="sent").length;
+  if(!low.length&&!due&&!sent)return"";
+  return`<a href="#inventory" class="banner" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;text-decoration:none;color:var(--ink);margin:12px 0 0"><b>Inventory</b>${low.length?`<span class="pill ${low.some(i=>lvl(i,stockInfo(i))==="bad")?"bad":"warn"}">${low.length} item${low.length>1?"s":""} low</span>`:""}${due?`<span class="pill warn">Count due${last?" · last "+esc(fmt(last,"short")):""}</span>`:""}${sent?`<span class="pill info">${sent} order${sent>1?"s":""} waiting for delivery</span>`:""}</a>`}
+
+/* ---------- order PDF and email ---------- */
+const fillOrder=(t,o)=>{const s=supById(o.supplier)||{};const lines=Object.entries(o.lines||{}).filter(([,q])=>+q>0).map(([id,q])=>{const it=itemById(id)||{name:"(removed item)"};return"• "+it.name+([it.brand,it.code?"#"+it.code:""].filter(Boolean).length?" ("+[it.brand,it.code?"#"+it.code:""].filter(Boolean).join(", ")+")":"")+" — "+n2(q)+" × "+unitOf(it)});
+  return String(t||"").replace(/\[supplier\]/gi,s.contact||s.name||"").replace(/\[date\]/gi,fmt(iso(today()),"nodow")).replace(/\[order number\]/gi,String(o.no)).replace(/\[items\]/gi,lines.join("\n")).replace(/\[note\]/gi,o.note||"")};
+async function orderPDF(o){await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js").catch(()=>{});if(!window.jspdf)throw new Error("pdf");
+  const {jsPDF}=window.jspdf;const p=new jsPDF({unit:"mm",format:"a4"});const S=I().settings;const s=supById(o.supplier)||{};const W=210,M=15;
+  const lines=Object.entries(o.lines||{}).filter(([,q])=>+q>0).map(([id,q])=>({it:itemById(id)||{name:"(removed item)"},q}));
+  for(const l of lines)l.ph=await ensurePhoto(l.it.photo);
+  let y=18;p.setFont("helvetica","bold");p.setFontSize(16);p.text(S.org||data.settings.name||"Program Hub",M,y);p.setFontSize(12);p.setFont("helvetica","normal");p.text("Lab supply order",M,y+7);
+  p.setFontSize(11);p.setFont("helvetica","bold");p.text("Order #"+o.no,W-M,y,{align:"right"});p.setFont("helvetica","normal");p.text(fmt(iso(today()),"nodow"),W-M,y+6,{align:"right"});
+  y+=16;p.setDrawColor(200);p.line(M,y,W-M,y);y+=7;p.setFontSize(10);p.setTextColor(110);p.text("SUPPLIER",M,y);p.setTextColor(20);p.setFontSize(11);p.text([s.name||"",s.email||""].filter(Boolean),M,y+5);
+  if(o.note){p.setFontSize(10);p.setTextColor(110);p.text("NOTE",W/2,y);p.setTextColor(20);p.setFontSize(11);p.text(p.splitTextToSize(o.note,W/2-M),W/2,y+5)}
+  y+=18;const head=()=>{p.setFillColor(238,240,245);p.rect(M,y-5,W-2*M,8,"F");p.setFontSize(9);p.setTextColor(80);p.setFont("helvetica","bold");p.text("PHOTO",M+2,y);p.text("ITEM",M+34,y);p.text("UNIT",M+122,y);p.text("QTY",W-M-2,y,{align:"right"});p.setFont("helvetica","normal");p.setTextColor(20);y+=7};head();
+  lines.forEach((l,k)=>{const it=l.it;const nameL=p.splitTextToSize(it.name,84),sub=[it.brand,it.code?"Item # "+it.code:""].filter(Boolean),unitL=p.splitTextToSize(unitOf(it),36);
+    const th=nameL.length*5+sub.length*4.5+2,ph=l.ph?28:0,rh=Math.max(ph,th,unitL.length*5)+4;if(y+rh>282){p.addPage();y=18;head()}
+    if(l.ph){const r=Math.min(28/l.ph.w,28/l.ph.h);const w=l.ph.w*r,h=l.ph.h*r;try{p.addImage(l.ph.d,"JPEG",M+2+(28-w)/2,y+(28-h)/2,w,h)}catch(e){}}else{p.setFontSize(8);p.setTextColor(150);p.text("no photo",M+6,y+6);p.setTextColor(20)}
+    p.setFontSize(11);p.setFont("helvetica","bold");p.text(nameL,M+34,y+4);p.setFont("helvetica","normal");p.setFontSize(9);p.setTextColor(90);sub.forEach((t,j)=>p.text(t,M+34,y+4+nameL.length*5+j*4.5));p.setTextColor(20);
+    p.setFontSize(10);p.text(unitL,M+122,y+4);p.setFontSize(13);p.setFont("helvetica","bold");p.text(String(n2(l.q)),W-M-2,y+5,{align:"right"});p.setFont("helvetica","normal");
+    y+=rh;p.setDrawColor(225);p.line(M,y-2,W-M,y-2)});
+  y+=4;if(y>280){p.addPage();y=20}p.setFontSize(10);p.setTextColor(90);p.text(lines.length+" item"+(lines.length===1?"":"s"),M,y);
+  const n=p.getNumberOfPages();for(let i=1;i<=n;i++){p.setPage(i);p.setFontSize(8);p.setTextColor(140);p.text("Order #"+o.no+" · page "+i+" of "+n,W-M,292,{align:"right"})}
+  return p}
+const pdfName=o=>("Order-"+o.no+"-"+((supById(o.supplier)||{}).name||"supplier")).replace(/[^\w\-]+/g,"_")+".pdf";
+function dlBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}
+const b64u=s=>btoa(unescape(encodeURIComponent(s)));const hdr=s=>/^[\x20-\x7e]*$/.test(s)?s:"=?UTF-8?B?"+b64u(s)+"?=";
+function abToB64(buf){const u=new Uint8Array(buf);let s="";for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)}
+const wrap76=s=>s.replace(/(.{76})/g,"$1\r\n");
+async function orderEml(o){const S=I().settings;const s=supById(o.supplier)||{};const pdf=await orderPDF(o);const att=abToB64(pdf.output("arraybuffer"));
+  const html='<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'+textToHtml(fillOrder(S.body,o))+"</div>";const B="=_ph_"+uid();
+  const cc=String(S.cc||"").split(/[;,]\s*/).filter(Boolean).join(", ");
+  const eml=["To: "+(s.email||""),cc?"Cc: "+cc:"","Subject: "+hdr(fillOrder(S.subject,o)),"X-Unsent: 1","MIME-Version: 1.0",`Content-Type: multipart/mixed; boundary="${B}"`,"","--"+B,'Content-Type: text/html; charset="utf-8"',"Content-Transfer-Encoding: base64","",wrap76(b64u(html)),"--"+B,`Content-Type: application/pdf; name="${pdfName(o)}"`,`Content-Disposition: attachment; filename="${pdfName(o)}"`,"Content-Transfer-Encoding: base64","",wrap76(att),"--"+B+"--",""].filter((l,i)=>l!==""||i>4).join("\r\n");
+  dlBlob(new Blob([eml],{type:"message/rfc822"}),pdfName(o).replace(/\.pdf$/,".eml"))}
+
+async function invXL(){try{await loadXL()}catch(e){toast("Couldn't load the Excel maker. Check your connection.");return}const wb=new ExcelJS.Workbook();const y=rpYear;const bold={bold:true};
+  const ws1=wb.addWorksheet("Stock");ws1.addRow(["Item","Brand","Item #","Unit","Tags","Supplier","On hand","Reorder at","Status","Months left","Last count"]).font=bold;
+  activeItems().forEach(it=>{const si=stockInfo(it),lv=lvl(it,si);ws1.addRow([it.name,it.brand||"",it.code||"",unitOf(it),it.tags.join(", "),(supById(it.supplier)||{}).name||"",si.stock,it.reorder===""||it.reorder==null?null:+it.reorder,LV[lv]||"",si.left!=null?n2(si.left):null,si.lastCount||""])});
+  const ws2=wb.addWorksheet("Spending "+y);ws2.addRow(["Quarter","Subtotal","HST","Shipping","Total"]).font=bold;spendQ(y,"").forEach((q,k)=>ws2.addRow(["Q"+(k+1),n2(q.sub),n2(q.hst),n2(q.ship),n2(q.total)]));ws2.addRow(["Total",{formula:"SUM(B2:B5)"},{formula:"SUM(C2:C5)"},{formula:"SUM(D2:D5)"},{formula:"SUM(E2:E5)"}]).font=bold;
+  ws2.addRow([]);ws2.addRow(["Date","Supplier","Invoice #","Subtotal","HST","Shipping","Total","By"]).font=bold;I().deliveries.filter(d=>+d.date.slice(0,4)===y).sort((a,b)=>a.date.localeCompare(b.date)).forEach(d=>ws2.addRow([d.date,(supById(d.supplier)||{}).name||"",d.inv||"",n2(d.sub),n2(d.hst),n2(d.ship),n2(d.total),d.by||""]));
+  const ws3=wb.addWorksheet("Usage "+y);ws3.addRow(["Item","Unit","Q1","Q2","Q3","Q4","Year","Per month now"]).font=bold;usageQ(y,"").forEach(r=>ws3.addRow([r.it.name,unitOf(r.it),...r.Q.map(n2),n2(r.tot),r.si.rate?n2(r.si.rate):null]));
+  const ws4=wb.addWorksheet("History "+y);ws4.addRow(["Date","What","Details","By"]).font=bold;invHistory(y).forEach(x=>ws4.addRow([x.date,x.kind,x.what,x.by||""]));
+  [ws1,ws2,ws3,ws4].forEach(w=>w.columns.forEach((c,i)=>c.width=i===0?34:16));
+  const buf=await wb.xlsx.writeBuffer();dlBlob(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),"Inventory_"+y+"_"+iso(today())+".xlsx");toast("Excel downloaded")}
+
+/* ---------- inventory events ---------- */
+function invChange(t){
+  if(t.id==="inv-tag"){invTag=t.value;render();return true}if(t.id==="inv-low"){invLow=t.checked;render();return true}if(t.id==="inv-arch"){invArch=t.checked;render();return true}
+  if(t.id==="io-open"){invOpenOnly=t.checked;render();return true}if(t.id==="rp-year"){rpYear=+t.value;render();return true}if(t.id==="rp-tag"){rpTag=t.value;render();return true}
+  if(t.id==="io-sup"||t.id==="io-only"){const f=t.form;const o=readOrderForm(f);if(t.id==="io-only")ui.ioOnly=t.checked;else ui.ioOnly=true;const id=f.dataset.id;if(id){const real=I().orders.find(x=>x.id===id);ui.ioTemp=Object.assign({},real,o);}else ui.ioDraft=o;rerenderOrder(id);return true}
+  if(t.id==="dv-o"){const f=t.form;const o=I().orders.find(x=>x.id===t.value);if(!o)return false;const d=readDelivForm(f);d.order=o.id;d.supplier=o.supplier;d.lines={};Object.entries(o.lines||{}).forEach(([id,q])=>{if(+q>0)d.lines[id]={q:+q,p:""}});if(f.dataset.id)ui.dvTemp=Object.assign({id:f.dataset.id},d);else ui.dvDraft=d;rerenderDeliv(f.dataset.id);return true}
+  if(t.id==="ii-photo"&&t.files[0]){const fr=new FileReader();fr.onload=()=>shrink(fr.result,560,.72).then(p=>{pendPhoto=p;const pv=$("ii-prev");if(pv)pv.innerHTML=`<img class="thumb" src="${p.d}" alt="">`}).catch(()=>toast("Couldn't read that photo."));fr.readAsDataURL(t.files[0]);return true}
+  return false}
+function readOrderForm(f){const o={supplier:f.elements.supplier.value,note:f.elements.note.value.trim(),lines:{}};[...f.querySelectorAll("input[name^='q-']")].forEach(x=>{if(x.value!=="")o.lines[x.name.slice(2)]=+x.value});return o}
+function readDelivForm(f){const v=n=>(f.elements[n]&&f.elements[n].value||"").trim();const d={date:v("date"),supplier:v("supplier"),order:v("order"),inv:v("inv"),note:v("note"),sub:v("sub"),hst:v("hst"),ship:v("ship"),lines:{}};
+  [...f.querySelectorAll("input[name^='d-']")].forEach(x=>{const id=x.name.slice(2);const p=f.elements["p-"+id].value;if(x.value!==""&&+x.value>0)d.lines[id]={q:+x.value,p:p===""?"":+p}});return d}
+function rerenderOrder(id){const keep=readOrderKeep();render();restoreKeep(keep)}
+function rerenderDeliv(){render()}
+const readOrderKeep=()=>{const b=$("by-in");return b?b.value:""};const restoreKeep=v=>{const b=$("by-in");if(b&&v)b.value=v};
+function dvRecalc(f){const S=I().settings;let sum=0,any=false;[...f.querySelectorAll("input[name^='d-']")].forEach(x=>{const p=f.elements["p-"+x.name.slice(2)].value;if(x.value!==""&&p!==""){sum+=(+x.value)*(+p);any=true}});
+  const sub=f.elements.sub,hst=f.elements.hst;if(any&&!sub.dataset.manual)sub.value=n2(sum).toFixed(2);if(sub.value!==""&&!hst.dataset.manual)hst.value=n2((+sub.value)*(+S.hst)/100).toFixed(2);
+  const tot=(+sub.value||0)+(+hst.value||0)+(+f.elements.ship.value||0);const el=$("dv-tot");if(el)el.textContent=money(tot)}
+document.addEventListener("input",e=>{const t=e.target;
+  if(t.id==="inv-q"){invQ=t.value;const pos=t.selectionStart;render();const x=$("inv-q");if(x){x.focus();x.setSelectionRange(pos,pos)}return}
+  if(t.dataset&&t.dataset.dv!=null){const f=t.form;if(t.id==="dv-sub"||t.id==="dv-hst")t.dataset.manual=t.value===""?"":"1";if(t.id==="dv-sub"&&t.value===""){}dvRecalc(f)}});
+function invAct(a,b){
+  if(a==="invtab"){invTab=b.dataset.v;reset();render();return true}
+  if(a==="invpdf"||a==="invmail"){const o=I().orders.find(x=>x.id===b.dataset.id);if(!o)return true;toast(a==="invpdf"?"Making the PDF…":"Making the email…");
+    (a==="invpdf"?orderPDF(o).then(p=>{dlBlob(p.output("blob"),pdfName(o));toast("PDF downloaded")}):orderEml(o).then(()=>toast("Email file downloaded. Open it to start the email in Outlook."))).catch(()=>toast("Couldn't make the file. Check your connection and try again."));return true}
+  if(a==="invcopy"){const o=I().orders.find(x=>x.id===b.dataset.id);if(!o)return true;const S=I().settings;const s=supById(o.supplier)||{};copyText("To: "+(s.email||"")+"\nCc: "+(S.cc||"")+"\nSubject: "+fillOrder(S.subject,o)+"\n\n"+fillOrder(S.body,o),"Email text");return true}
+  if(a==="invxl"){invXL();return true}
+  if(readOnly)return false;
+  if(a==="invnew"){reset();pendPhoto=null;ui.edit="ii:new";render();$("ii-n")?.focus();return true}
+  if(a==="invedit"){reset();pendPhoto=null;ui.edit="ii:"+b.dataset.id;render();return true}
+  if(a==="invarch"){const it=itemById(b.dataset.id);if(it){it.archived=!it.archived;reset();save(true);render();toast(it.archived?"Archived. Find it under Archived.":"Restored")}return true}
+  if(a==="invdelcount"){I().counts=I().counts.filter(c=>c.id!==b.dataset.id);reset();save(true);render();toast("Count deleted");return true}
+  if(a==="invneworder"){reset();ui.ioDraft={};ui.edit="io:new";render();return true}
+  if(a==="invedorder"){reset();ui.edit="io:"+b.dataset.id;render();return true}
+  if(a==="invsug"){const f=b.closest("form");f.querySelectorAll("input[data-sug]").forEach(x=>{if(x.value===""&&+x.dataset.sug>0)x.value=x.dataset.sug});toast("Suggested amounts filled in. Change any you like.");return true}
+  if(a==="invsent"){reset();ui.edit="is:"+b.dataset.id;render();return true}
+  if(a==="invcancel"){const o=I().orders.find(x=>x.id===b.dataset.id);if(o)o.status="cancelled";reset();save(true);render();return true}
+  if(a==="invdelorder"){I().orders=I().orders.filter(x=>x.id!==b.dataset.id);reset();save(true);render();toast("Order deleted");return true}
+  if(a==="invrecv"){const o=I().orders.find(x=>x.id===b.dataset.id);if(!o)return true;const d={order:o.id,supplier:o.supplier,lines:{}};Object.entries(o.lines||{}).forEach(([id,q])=>{if(+q>0)d.lines[id]={q:+q,p:""}});reset();ui.dvDraft=d;ui.edit="id:new";invTab="deliv";render();return true}
+  if(a==="invnewdeliv"){reset();ui.dvDraft={};ui.edit="id:new";render();return true}
+  if(a==="invedeliv"){reset();ui.edit="id:"+b.dataset.id;render();return true}
+  if(a==="invdeldeliv"){const d=I().deliveries.find(x=>x.id===b.dataset.id);I().deliveries=I().deliveries.filter(x=>x.id!==b.dataset.id);if(d&&d.order){const o=I().orders.find(x=>x.id===d.order);if(o&&o.status==="received")o.status="sent"}reset();save(true);render();toast("Delivery deleted");return true}
+  if(a==="invnewsup"){reset();ui.edit="sp:new";render();return true}if(a==="invedsup"){reset();ui.edit="sp:"+b.dataset.id;render();return true}
+  if(a==="invdelsup"){I().suppliers=I().suppliers.filter(s=>s.id!==b.dataset.id);reset();save(true);render();return true}
+  return false}
+function invForm(f){const k=f.dataset.form;if(!/^inv/.test(k))return false;if(readOnly)return true;const v=n=>(f.elements[n]&&f.elements[n].value||"").trim();const num_=n=>v(n)===""?"":+v(n);
+  if(k==="invitem"){(async()=>{const id=f.dataset.id;const tags=[...new Set([...f.querySelectorAll("input[name=tag]:checked")].map(x=>x.value).concat(v("newtags").split(",").map(s=>s.trim()).filter(Boolean)))];
+    const body={name:v("name"),brand:v("brand"),code:v("code"),unit:v("unit"),supplier:v("supplier"),tags,reorder:num_("reorder"),keep:num_("keep"),notes:v("notes")};
+    let it=id?itemById(id):null;if(!it){it=Object.assign({id:uid(),photo:"",archived:false},body);I().items.push(it)}else Object.assign(it,body);
+    if(f.elements.nophoto&&f.elements.nophoto.checked){dropPhoto(it.photo);it.photo=""}
+    if(pendPhoto){const old=it.photo;it.photo=await putPhoto(pendPhoto);if(old)dropPhoto(old);pendPhoto=null}
+    if(!id&&v("start")!==""){const by=takeBy(f);I().counts.push({id:uid(),date:iso(today()),at:nowAt(),by,q:{[it.id]:+v("start")}})}
+    reset();save(true);render();toast(id?"Item saved":"Item added")})();return true}
+  if(k==="invcount"){const q={};[...f.querySelectorAll("input[name^='c-']")].forEach(x=>{if(x.value!=="")q[x.name.slice(2)]=+x.value});if(!Object.keys(q).length){toast("Enter at least one count.");return true}
+    I().counts.push({id:uid(),date:v("date")||iso(today()),at:nowAt(),by:takeBy(f),q});reset();save(true);render();toast("Count saved for "+Object.keys(q).length+" item"+(Object.keys(q).length===1?"":"s"));return true}
+  if(k==="invorder"){const o=readOrderForm(f);const by=takeBy(f);if(!Object.values(o.lines).some(q=>+q>0)){toast("Enter an amount for at least one item.");return true}
+    Object.keys(o.lines).forEach(id=>{if(!(+o.lines[id]>0))delete o.lines[id]});
+    if(f.dataset.id){Object.assign(I().orders.find(x=>x.id===f.dataset.id)||{},o)}else{const S=I().settings;I().orders.push(Object.assign({id:uid(),no:S.nextNo,created:Date.now(),by,status:"draft"},o));S.nextNo=(+S.nextNo||1)+1}
+    ui.ioDraft=null;ui.ioTemp=null;reset();save(true);render();toast("Order saved");return true}
+  if(k==="invsent"){const o=I().orders.find(x=>x.id===f.dataset.id);if(o){o.status="sent";o.sentAt=iso(today());o.sentStamp=Date.now();o.sentBy=takeBy(f)}reset();save(true);render();toast("Marked as sent");return true}
+  if(k==="invdeliv"){const d=readDelivForm(f);if(!Object.keys(d.lines).length){toast("Enter what arrived for at least one item.");return true}
+    d.sub=d.sub===""?0:+d.sub;d.hst=d.hst===""?0:+d.hst;d.ship=d.ship===""?0:+d.ship;d.total=n2(d.sub+d.hst+d.ship);const by=takeBy(f);
+    let rec;if(f.dataset.id){rec=I().deliveries.find(x=>x.id===f.dataset.id);const oldOrder=rec.order;Object.assign(rec,d,{by:by||rec.by});if(oldOrder&&oldOrder!==d.order){const oo=I().orders.find(x=>x.id===oldOrder);if(oo&&oo.status==="received")oo.status="sent"}}
+    else{rec=Object.assign({id:uid(),at:nowAt(),by},d);I().deliveries.push(rec)}
+    if(d.order){const o=I().orders.find(x=>x.id===d.order);if(o){o.status="received";o.delivery=rec.id}}
+    ui.dvDraft=null;reset();save(true);render();toast("Delivery saved. Stock updated.");return true}
+  if(k==="invsup"){const body={name:v("name"),email:v("email"),contact:v("contact")};if(f.dataset.id)Object.assign(supById(f.dataset.id)||{},body);else I().suppliers.push(Object.assign({id:uid()},body));reset();save(true);render();toast("Supplier saved");return true}
+  if(k==="invset"){Object.assign(I().settings,{cc:v("cc"),subject:v("subject")||"Lab supply order #[Order number] – [Date]",body:f.elements.body.value||INV_BODY,org:v("org"),hst:v("hst")===""?13:+v("hst"),countEvery:+v("countEvery")||30,remind:f.elements.remind.checked});save(true);render();toast("Saved");return true}
+  return true}
+
 document.addEventListener("dragover",e=>{if(e.target.closest&&e.target.closest(".drop"))e.preventDefault()});
 document.addEventListener("drop",e=>{const z=e.target.closest&&e.target.closest(".drop");if(!z)return;e.preventDefault();const f=e.dataTransfer.files[0];if(!f)return;const inp=z.querySelector("input[type=file]");try{const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event("change",{bubbles:true}))}catch(x){}});
 if(window.claude&&typeof window.claude.use==="function"){window.claude.use("db").then(db=>db?startDb(db):startLocal()).catch(startLocal)}
